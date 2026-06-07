@@ -20,6 +20,10 @@ def register(tree, database):
                 session.add(user)
                 await session.commit()
 
+            # Read jennies while session is still open to avoid
+            # detached instance errors after the session closes
+            jennies = user.jennies
+
         await interaction.response.send_message(
-            f"{interaction.user.mention}, you have {user.jennies} Jennies."
+            f"{interaction.user.mention}, you have {jennies} Jennies."
         )

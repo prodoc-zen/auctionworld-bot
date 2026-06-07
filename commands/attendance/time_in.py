@@ -1,6 +1,6 @@
 from sqlalchemy import select
 
-from database.models import AttendanceRecord, User
+from database.models import AdminUser, AttendanceRecord, User
 
 name        = "timein"
 description = "Record a time-in attendance log"
@@ -12,6 +12,7 @@ def register(tree, database):
         discord_id = interaction.user.id
 
         async with database.session() as session:
+            # Block if already timed in
             result = await session.execute(
                 select(AttendanceRecord).where(
                     AttendanceRecord.discord_id == discord_id,
@@ -25,8 +26,14 @@ def register(tree, database):
                 )
                 return
 
+            # Ensure user row exists
             if await session.get(User, discord_id) is None:
                 session.add(User(discord_id=discord_id, jennies=0))
+                await session.flush()
+
+            # Auto-register as admin_user if not already present
+            if await session.get(AdminUser, discord_id) is None:
+                session.add(AdminUser(discord_id=discord_id, is_active=True))
 
             session.add(AttendanceRecord(discord_id=discord_id))
             await session.commit()

@@ -12,10 +12,10 @@ from database.models import HostingQueueEntry, utc_now
 
 QUEUES = ("Left", "Mid", "Right")
 
-WAITING  = "waiting"
-ACTIVE   = "active"
-DONE     = "done"
-SKIPPED  = "skipped"
+WAITING = "waiting"
+ACTIVE  = "active"
+DONE    = "done"
+SKIPPED = "skipped"
 
 # In-memory task registries (live for the process lifetime)
 _session_tasks: dict = {}
@@ -62,6 +62,53 @@ async def get_waiting(session, queue_name: str):
         .order_by(HostingQueueEntry.joined_at.asc())
     )
     return result.scalars().all()
+
+
+# ---------------------------------------------------------------------------
+# Startup recovery — call this in bot.py on_ready
+# ---------------------------------------------------------------------------
+
+async def recover_active_sessions(client, database):
+    """
+    On bot restart, find any sessions that were ACTIVE or had a pending
+    grace timer and reschedule their end/skip tasks based on expires_at.
+    This prevents sessions from getting permanently stuck after a crash.
+    """
+    now = utc_now()
+
+    async with database.session() as session:
+        # Recover active sessions
+        result = await session.execute(
+            select(HostingQueueEntry).where(
+                HostingQueueEntry.status == ACTIVE,
+            )
+        )
+        active_entries = result.scalars().all()
+
+        for entry in active_entries:
+            if entry.expires_at is None or entry.channel_id is None:
+                continue
+
+            remaining_seconds = (entry.expires_at - now).total_seconds()
+
+            if remaining_seconds <= 0:
+                # Already expired — mark as done immediately
+                entry.status       = DONE
+                entry.completed_at = now
+            else:
+                # Reschedule the session end timer for remaining time
+                remaining_minutes = remaining_seconds / 60
+                schedule_session_end(
+                    client, database,
+                    entry.queue_name, entry.id,
+                    entry.channel_id, remaining_minutes,
+                )
+
+        await session.commit()
+
+    if active_entries:
+        recovered = len(active_entries)
+        client.logger.info("Recovered %d active hosting session(s) after restart.", recovered)
 
 
 # ---------------------------------------------------------------------------
@@ -213,7 +260,7 @@ async def _skip_after_grace(client, database, queue_name, entry_id, channel_id, 
 
 
 # ---------------------------------------------------------------------------
-# Shared UI View (used by all hosting commands to render the panel)
+# Shared UI View
 # ---------------------------------------------------------------------------
 
 class HostingQueueView(discord.ui.View):
@@ -239,8 +286,8 @@ class JoinQueueButton(discord.ui.Button):
         self.queue_name = queue_name
 
     async def callback(self, interaction):
-        discord_id = interaction.user.id
-        now        = utc_now()
+        discord_id          = interaction.user.id
+        now                 = utc_now()
         should_prompt_start = False
         next_entry_id       = None
 
@@ -305,8 +352,8 @@ class StartQueueButton(discord.ui.Button):
         self.queue_name = queue_name
 
     async def callback(self, interaction):
-        discord_id     = interaction.user.id
-        now            = utc_now()
+        discord_id      = interaction.user.id
+        now             = utc_now()
         session_minutes = int(interaction.client.config.get("hosting_session_minutes", 60))
 
         async with self.view.database.session() as session:
