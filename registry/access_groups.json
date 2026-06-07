@@ -1,30 +1,29 @@
 {
+  "moderators": {
+    "user_ids": [],
+    "role_ids": ["1429310362418941972"]
+  },
+
   "admins": {
     "user_ids": [],
-    "role_ids": []
+    "role_ids": ["1429303490471264400"]
   },
 
   "server_admins": {
     "user_ids": [],
     "role_ids": [],
-    "include_groups": [
-      "admins"
-    ]
+    "include_groups": ["admins"]
   },
 
   "head_admins": {
     "user_ids": [],
     "role_ids": [],
-    "include_groups": [
-      "server_admins"
-    ]
+    "include_groups": ["server_admins"]
   },
-  
+
   "higher_admins": {
     "user_ids": [],
     "role_ids": [],
-    "include_groups": [
-      "head_admins"
-    ]
+    "include_groups": ["head_admins"]
   }
 }

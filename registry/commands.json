@@ -32,7 +32,7 @@
   "leaderboard": {
     "file": "commands/leaderboard/jennies.py",
     "description": "Show the top Jennies balances",
-    "usage": "/leaderboardniga",
+    "usage": "/leaderboard",
     "access": {
       "user_ids": [],
       "role_ids": [],
@@ -51,30 +51,6 @@
       ]
     }
   },
-  "timein": {
-    "file": "commands/attendance/time_in.py",
-    "description": "Record a time-in attendance log",
-    "usage": "/timein",
-    "access": {
-      "user_ids": [],
-      "role_ids": [],
-      "groups": [
-        "admins"
-      ]
-    }
-  },
-  "timeout": {
-    "file": "commands/attendance/time_out.py",
-    "description": "Record a time-out attendance log",
-    "usage": "/timeout",
-    "access": {
-      "user_ids": [],
-      "role_ids": [],
-      "groups": [
-        "admins"
-      ]
-    }
-  },
   "weeklyhours": {
     "file": "commands/attendance/weekly_hours.py",
     "description": "Check total timed hours for this week",
@@ -84,6 +60,18 @@
       "role_ids": [],
       "groups": [
         "higher_admins"
+      ]
+    }
+  },
+  "submithosting": {
+    "file": "commands/attendance/submit_hosting.py",
+    "description": "Submit a hosting session log with screenshots",
+    "usage": "/submithosting time_in: time_out: earnings: screenshot1: screenshot2: screenshot3:",
+    "access": {
+      "user_ids": [],
+      "role_ids": [],
+      "groups": [
+        "admins"
       ]
     }
   }
