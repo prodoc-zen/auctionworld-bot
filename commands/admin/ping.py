@@ -1,4 +1,4 @@
-name = "ping"
+name        = "ping"
 description = "Check whether the bot is online"
 
 

@@ -32,7 +32,7 @@
   "leaderboard": {
     "file": "commands/leaderboard/jennies.py",
     "description": "Show the top Jennies balances",
-    "usage": "/leaderboardniga",
+    "usage": "/leaderboard",
     "access": {
       "user_ids": [],
       "role_ids": [],

@@ -2,8 +2,7 @@ from sqlalchemy import select
 
 from database.models import AttendanceRecord, User
 
-
-name = "timein"
+name        = "timein"
 description = "Record a time-in attendance log"
 
 
@@ -13,21 +12,20 @@ def register(tree, database):
         discord_id = interaction.user.id
 
         async with database.session() as session:
-            open_record = await session.execute(
+            result = await session.execute(
                 select(AttendanceRecord).where(
                     AttendanceRecord.discord_id == discord_id,
                     AttendanceRecord.time_out_at.is_(None),
                 )
             )
-            if open_record.scalar_one_or_none() is not None:
+            if result.scalar_one_or_none() is not None:
                 await interaction.response.send_message(
                     f"{interaction.user.mention}, you are already timed in.",
                     ephemeral=True,
                 )
                 return
 
-            user = await session.get(User, discord_id)
-            if user is None:
+            if await session.get(User, discord_id) is None:
                 session.add(User(discord_id=discord_id, jennies=0))
 
             session.add(AttendanceRecord(discord_id=discord_id))

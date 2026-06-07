@@ -2,8 +2,7 @@ from sqlalchemy import select
 
 from database.models import AttendanceRecord, utc_now
 
-
-name = "timeout"
+name        = "timeout"
 description = "Record a time-out attendance log"
 
 
