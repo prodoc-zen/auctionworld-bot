@@ -6,7 +6,7 @@ from discord import app_commands
 from database.models import AdminUser, AttendanceRecord, User, utc_now
 
 name        = "submithosting"
-description = "Submit a hosting session log with screenshots"
+description = "Submit a hosting session log"
 
 HOSTING_SESSIONS_CHANNEL_ID = 1447015434959327292
 MIN_ATTACHMENTS = 3
@@ -83,7 +83,6 @@ def register(tree, database):
         target     = member or interaction.user
         discord_id = target.id
 
-        # Collect all provided attachments
         all_attachments = [
             a for a in [
                 screenshot1, screenshot2, screenshot3, screenshot4,
@@ -92,16 +91,14 @@ def register(tree, database):
             ] if a is not None
         ]
 
-        # Validate all are images
         non_images = [a.filename for a in all_attachments if not is_image(a)]
         if non_images:
             await interaction.response.send_message(
-                f"These files are not images: {', '.join(non_images)}. Please upload image files only.",
+                f"These files are not images: {', '.join(non_images)}.",
                 ephemeral=True,
             )
             return
 
-        # Parse times
         time_in_dt  = parse_time(time_in)
         time_out_dt = parse_time(time_out)
 
@@ -121,8 +118,7 @@ def register(tree, database):
 
         if time_out_dt <= time_in_dt:
             await interaction.response.send_message(
-                "Time-out must be after time-in.",
-                ephemeral=True,
+                "Time-out must be after time-in.", ephemeral=True,
             )
             return
 
@@ -141,17 +137,14 @@ def register(tree, database):
                 discord_id=discord_id,
                 time_in_at=time_in_dt,
                 time_out_at=time_out_dt,
+                earnings=earnings,
             )
             session.add(record)
             await session.flush()
             hosting_id = record.id
             await session.commit()
 
-        # Build the embed with the first image as the main image
-        embed = discord.Embed(
-            title="Hosting Session",
-            color=discord.Color.green(),
-        )
+        embed = discord.Embed(title="Hosting Session", color=discord.Color.green())
         embed.add_field(name="Hosting ID",  value=str(hosting_id),                          inline=False)
         embed.add_field(name="Discord",     value=target.mention,                            inline=False)
         embed.add_field(name="Earnings",    value=earnings,                                  inline=False)
@@ -159,15 +152,12 @@ def register(tree, database):
         embed.add_field(name="Date",        value=time_in_dt.strftime("%d %b %Y %H:%M UTC"), inline=False)
         embed.set_image(url=all_attachments[0].url)
 
-        # Post to #hosting-sessions
         channel = interaction.client.get_channel(HOSTING_SESSIONS_CHANNEL_ID)
         if channel is None:
             channel = await interaction.client.fetch_channel(HOSTING_SESSIONS_CHANNEL_ID)
 
-        # Send main embed with first image
         await channel.send(embed=embed)
 
-        # Send remaining images as a follow-up grid if there are more than 1
         if len(all_attachments) > 1:
             extra_embeds = []
             for attachment in all_attachments[1:]:

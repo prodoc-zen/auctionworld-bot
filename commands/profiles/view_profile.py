@@ -21,39 +21,24 @@ def format_duration(total_seconds: float) -> str:
     return f"{hours}h {minutes}m"
 
 
-async def get_time_worked(session, discord_id, start, now):
+async def get_records(session, discord_id, start, now):
     result = await session.execute(
         select(AttendanceRecord).where(
             AttendanceRecord.discord_id == discord_id,
-            AttendanceRecord.time_in_at < now,
-            or_(
-                AttendanceRecord.time_out_at.is_(None),
-                AttendanceRecord.time_out_at >= start,
-            ),
         )
     )
-    records       = result.scalars().all()
+    return result.scalars().all()
+
+
+def calculate_time(records, start, now, weekly=True):
     total_seconds = 0
     for record in records:
-        session_start = max(record.time_in_at, start)
+        if weekly and record.time_in_at < start:
+            continue
+        session_start = record.time_in_at if not weekly else max(record.time_in_at, start)
         session_end   = record.time_out_at or now
         if session_end > session_start:
             total_seconds += (session_end - session_start).total_seconds()
-    return total_seconds
-
-
-async def get_all_time_worked(session, discord_id, now):
-    result = await session.execute(
-        select(AttendanceRecord).where(
-            AttendanceRecord.discord_id == discord_id,
-        )
-    )
-    records       = result.scalars().all()
-    total_seconds = 0
-    for record in records:
-        session_end = record.time_out_at or now
-        if session_end > record.time_in_at:
-            total_seconds += (session_end - record.time_in_at).total_seconds()
     return total_seconds
 
 
@@ -76,24 +61,37 @@ def register(tree, database):
                 )
                 return
 
-            user          = await session.get(User, discord_id)
-            weekly_secs   = await get_time_worked(session, discord_id, start, now)
-            total_secs    = await get_all_time_worked(session, discord_id, now)
+            user    = await session.get(User, discord_id)
+            records = await get_records(session, discord_id, start, now)
+
+        weekly_secs  = calculate_time(records, start, now, weekly=True)
+        total_secs   = calculate_time(records, start, now, weekly=False)
+
+        # Calculate earnings
+        weekly_earnings = [r.earnings for r in records if r.earnings and r.time_in_at >= start]
+        total_earnings  = [r.earnings for r in records if r.earnings]
+        weekly_earn_text = "\n".join(weekly_earnings) if weekly_earnings else "None"
+        total_earn_text  = f"{len(total_earnings)} session(s)" if total_earnings else "None"
 
         embed = discord.Embed(
             title=f"Admin Profile  {admin_profile.id}",
             color=discord.Color.blurple(),
         )
         embed.set_thumbnail(url=target.display_avatar.url)
-        embed.add_field(name="💬 Discord",          value=target.mention,                  inline=True)
-        embed.add_field(name="🌿 GT Name",          value=admin_profile.gt_name,           inline=True)
-        embed.add_field(name="👤 Role",             value=admin_profile.role,              inline=True)
+        embed.add_field(name="💬 Discord",          value=target.mention,                           inline=True)
+        embed.add_field(name="🌿 GT Name",          value=admin_profile.gt_name,                   inline=True)
+        embed.add_field(name="👤 Role",             value=admin_profile.role,                      inline=True)
         embed.add_field(name="🪙 Jennies",          value=f"{user.jennies if user else 0} jennies", inline=True)
-        embed.add_field(name="🎫 Priority Tickets", value=str(admin_profile.priority_tickets), inline=True)
+        embed.add_field(name="🎫 Priority Tickets", value=str(admin_profile.priority_tickets),     inline=True)
         embed.add_field(
             name="⏱️ Time Worked",
             value=f"Weekly: {format_duration(weekly_secs)}\nTotal: {format_duration(total_secs)}",
             inline=True,
+        )
+        embed.add_field(
+            name="💰 Earnings",
+            value=f"Weekly: {weekly_earn_text}\nTotal: {total_earn_text}",
+            inline=False,
         )
 
         await interaction.response.send_message(embed=embed)
