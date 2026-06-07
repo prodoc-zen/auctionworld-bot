@@ -3,76 +3,138 @@
     "file": "commands/economy/balance.py",
     "description": "Check your Jennies balance",
     "usage": "/balance",
-    "access": {
-      "user_ids": [],
-      "role_ids": [],
-      "groups": []
-    }
+    "access": { "user_ids": [], "role_ids": [], "groups": [] }
   },
   "daily": {
     "file": "commands/economy/daily.py",
     "description": "Claim a daily Jennies reward",
     "usage": "/daily",
-    "access": {
-      "user_ids": [],
-      "role_ids": [],
-      "groups": []
-    }
+    "access": { "user_ids": [], "role_ids": [], "groups": [] }
   },
   "hosting": {
     "file": "commands/hosting/queue.py",
     "description": "Open the hosting queue panel",
     "usage": "/hosting",
-    "access": {
-      "user_ids": [],
-      "role_ids": [],
-      "groups": []
-    }
+    "access": { "user_ids": [], "role_ids": [], "groups": [] }
   },
   "leaderboard": {
     "file": "commands/leaderboard/jennies.py",
     "description": "Show the top Jennies balances",
     "usage": "/leaderboard",
-    "access": {
-      "user_ids": [],
-      "role_ids": [],
-      "groups": []
-    }
+    "access": { "user_ids": [], "role_ids": [], "groups": [] }
   },
   "ping": {
     "file": "commands/admin/ping.py",
     "description": "Check whether the bot is online",
     "usage": "/ping",
-    "access": {
-      "user_ids": [],
-      "role_ids": [],
-      "groups": [
-        "admins"
-      ]
-    }
+    "access": { "user_ids": [], "role_ids": [], "groups": ["moderators"] }
   },
   "weeklyhours": {
     "file": "commands/attendance/weekly_hours.py",
     "description": "Check total timed hours for this week",
     "usage": "/weeklyhours [member]",
-    "access": {
-      "user_ids": [],
-      "role_ids": [],
-      "groups": [
-        "higher_admins"
-      ]
-    }
+    "access": { "user_ids": [], "role_ids": [], "groups": ["admins"] }
   },
   "submithosting": {
     "file": "commands/attendance/submit_hosting.py",
     "description": "Submit a hosting session log with screenshots",
-    "usage": "/submithosting time_in: time_out: earnings: screenshot1: screenshot2: screenshot3:",
-    "access": {
-      "user_ids": [],
-      "role_ids": [],
-      "groups": [
-        "admins"
-      ]
-    }
+    "usage": "/submithosting",
+    "access": { "user_ids": [], "role_ids": [], "groups": ["admins"] }
+  },
+  "issue-strike": {
+    "file": "commands/strikes/issue_strike.py",
+    "description": "Issue a strike to a user",
+    "usage": "/issue-strike member: reason: screenshot:",
+    "access": { "user_ids": [], "role_ids": [], "groups": ["moderators"] }
+  },
+  "remove-strike": {
+    "file": "commands/strikes/remove_strike.py",
+    "description": "Remove a strike by its ID",
+    "usage": "/remove-strike strike_id:",
+    "access": { "user_ids": [], "role_ids": [], "groups": ["moderators"] }
+  },
+  "view-strike": {
+    "file": "commands/strikes/view_strike.py",
+    "description": "View strikes for a user",
+    "usage": "/view-strike member:",
+    "access": { "user_ids": [], "role_ids": [], "groups": ["moderators"] }
+  },
+  "submit-payment": {
+    "file": "commands/payments/submit_payment.py",
+    "description": "Submit payment proof to create or upgrade an admin profile",
+    "usage": "/submit-payment reason: gt_name: screenshot:",
+    "access": { "user_ids": [], "role_ids": [], "groups": [] }
+  },
+  "view-payment": {
+    "file": "commands/payments/view_payment.py",
+    "description": "View a payment submission by its ID",
+    "usage": "/view-payment payment_id:",
+    "access": { "user_ids": [], "role_ids": [], "groups": ["moderators"] }
+  },
+  "verify-payment": {
+    "file": "commands/payments/verify_payment.py",
+    "description": "Verify a payment and create or upgrade the admin profile",
+    "usage": "/verify-payment payment_id: gt_name:",
+    "access": { "user_ids": [], "role_ids": [], "groups": ["moderators"] }
+  },
+  "create-profile": {
+    "file": "commands/profiles/create_profile.py",
+    "description": "Manually create an admin profile",
+    "usage": "/create-profile member: gt_name: role:",
+    "access": { "user_ids": [], "role_ids": [], "groups": ["moderators"] }
+  },
+  "profile": {
+    "file": "commands/profiles/view_profile.py",
+    "description": "View an admin profile",
+    "usage": "/profile [member]",
+    "access": { "user_ids": [], "role_ids": [], "groups": [] }
+  },
+  "change-gt": {
+    "file": "commands/profiles/change_gt.py",
+    "description": "Change an admin GT name in their profile",
+    "usage": "/change-gt admin_id: new_gt_name:",
+    "access": { "user_ids": [], "role_ids": [], "groups": ["moderators"] }
+  },
+  "change-discord": {
+    "file": "commands/profiles/change_discord.py",
+    "description": "Replace an admin Discord account in their profile",
+    "usage": "/change-discord admin_id: new_discord_id:",
+    "access": { "user_ids": [], "role_ids": [], "groups": ["moderators"] }
+  },
+  "give-priority-ticket": {
+    "file": "commands/profiles/give_priority_ticket.py",
+    "description": "Give a priority ticket to an admin",
+    "usage": "/give-priority-ticket member: [amount]",
+    "access": { "user_ids": [], "role_ids": [], "groups": [] }
+  },
+  "remove-blacklist": {
+    "file": "commands/blacklist/remove_blacklist.py",
+    "description": "Remove a user from the blacklist",
+    "usage": "/remove-blacklist member:",
+    "access": { "user_ids": [], "role_ids": [], "groups": ["moderators"] }
+  },
+  "pause-interview": {
+    "file": "commands/tickets/pause_interview.py",
+    "description": "Pause an interview in this ticket",
+    "usage": "/pause-interview",
+    "access": { "user_ids": [], "role_ids": [], "groups": ["moderators"] }
+  },
+  "resume-interview": {
+    "file": "commands/tickets/resume_interview.py",
+    "description": "Resume a paused interview in this ticket",
+    "usage": "/resume-interview",
+    "access": { "user_ids": [], "role_ids": [], "groups": ["moderators"] }
+  },
+  "close-ticket": {
+    "file": "commands/tickets/close_ticket.py",
+    "description": "Close this ticket",
+    "usage": "/close-ticket",
+    "access": { "user_ids": [], "role_ids": [], "groups": ["moderators"] }
+  },
+  "open-ticket": {
+    "file": "commands/tickets/open_ticket.py",
+    "description": "Reopen a closed ticket",
+    "usage": "/open-ticket",
+    "access": { "user_ids": [], "role_ids": [], "groups": ["moderators"] }
   }
 }
