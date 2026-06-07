@@ -1,0 +1,30 @@
+{
+  "admins": {
+    "user_ids": [],
+    "role_ids": []
+  },
+
+  "server_admins": {
+    "user_ids": [],
+    "role_ids": [],
+    "include_groups": [
+      "admins"
+    ]
+  },
+
+  "head_admins": {
+    "user_ids": [],
+    "role_ids": [],
+    "include_groups": [
+      "server_admins"
+    ]
+  },
+  
+  "higher_admins": {
+    "user_ids": [],
+    "role_ids": [],
+    "include_groups": [
+      "head_admins"
+    ]
+  }
+}

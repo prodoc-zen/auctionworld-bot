@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Discord Bot Command Registry",
+  "type": "object",
+  "additionalProperties": {
+    "type": "object",
+    "required": ["file", "description", "usage"],
+    "additionalProperties": false,
+    "properties": {
+      "file": {
+        "type": "string",
+        "pattern": "^commands/[a-z_]+/[a-z_]+\\.py$"
+      },
+      "description": {
+        "type": "string",
+        "minLength": 1
+      },
+      "usage": {
+        "type": "string",
+        "minLength": 1
+      },
+      "access": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "user_ids": {
+            "type": "array",
+            "items": {
+              "type": ["integer", "string"]
+            },
+            "default": []
+          },
+          "role_ids": {
+            "type": "array",
+            "items": {
+              "type": ["integer", "string"]
+            },
+            "default": []
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "default": []
+          }
+        }
+      }
+    }
+  }
+}

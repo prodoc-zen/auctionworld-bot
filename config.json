@@ -1,0 +1,11 @@
+{
+  "token": "YOUR_DISCORD_BOT_TOKEN",
+  "guild_id": null,
+  "database": {
+    "host": "localhost",
+    "user": "root",
+    "password": "",
+    "name": "auctionworld",
+    "port": 3306
+  }
+}
