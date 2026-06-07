@@ -86,5 +86,17 @@
         "higher_admins"
       ]
     }
+  },
+  "submithosting": {
+    "file": "commands/attendance/submit_hosting.py",
+    "description": "Manually submit a hosting session with a start and end time",
+    "usage": "/submithosting time_in: time_out: [member:]",
+    "access": {
+      "user_ids": [],
+      "role_ids": [],
+      "groups": [
+        "admins"
+      ]
+    }
   }
 }
