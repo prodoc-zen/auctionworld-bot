@@ -21,6 +21,12 @@ SKIPPED = "skipped"
 _session_tasks: dict = {}
 _grace_tasks:   dict = {}
 
+QUEUE_EMOJIS = {
+    "Left": "🔵",
+    "Mid": "🟣",
+    "Right": "🟢",
+}
+
 
 # ---------------------------------------------------------------------------
 # DB helpers
@@ -86,10 +92,13 @@ async def recover_active_sessions(client, database):
         active_entries = result.scalars().all()
 
         for entry in active_entries:
-            if entry.expires_at is None or entry.channel_id is None:
+            if entry.expires_at is None:
                 continue
 
             remaining_seconds = (entry.expires_at - now).total_seconds()
+            announce_channel_id = resolve_announce_channel_id(client, entry.channel_id)
+            if announce_channel_id is None:
+                continue
 
             if remaining_seconds <= 0:
                 # Already expired — mark as done immediately
@@ -101,7 +110,7 @@ async def recover_active_sessions(client, database):
                 schedule_session_end(
                     client, database,
                     entry.queue_name, entry.id,
-                    entry.channel_id, remaining_minutes,
+                    announce_channel_id, remaining_minutes,
                 )
 
         await session.commit()
@@ -117,38 +126,55 @@ async def recover_active_sessions(client, database):
 
 async def build_queue_embed(database) -> discord.Embed:
     embed = discord.Embed(
-        title="Hosting Queue",
-        description="Join a lane, then press Start when it is your turn.",
+        title="🚦 Hosting Queue",
+        description="Join a lane, then press **Start** when it's your turn. Timers are shown in `MM:SS`.",
         color=discord.Color.green(),
     )
 
     async with database.session() as session:
+        now = utc_now()
+        lines = [
+            "╔════════════════════════════════════════╗",
+            "║             HOSTING STATUS            ║",
+            "╚════════════════════════════════════════╝",
+            "",
+        ]
+
         for queue_name in QUEUES:
             active  = await get_active(session, queue_name)
             waiting = await get_waiting(session, queue_name)
+            emoji = QUEUE_EMOJIS.get(queue_name, "🔹")
 
             if active:
-                active_text = f"Hosting: <@{active.discord_id}>"
-                if active.expires_at:
-                    active_text += f"\nEnds <t:{int(active.expires_at.timestamp())}:R>"
+                host_text = f"<@{active.discord_id}>"
+                left_text = remaining_clock(now, active.expires_at)
             else:
-                active_text = "No active host"
+                host_text = "Available"
+                left_text = "--:--"
 
+            lines.append(f"{emoji} {queue_name.upper()} HOST")
+            lines.append(f"└─ {host_text}")
+            lines.append(f"⏳ Time Left: {left_text}")
+            lines.append("")
+
+        lines.append("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        lines.append("")
+
+        for queue_name in QUEUES:
+            waiting = await get_waiting(session, queue_name)
+            lines.append(f"📋 {queue_name.upper()} QUEUE ({len(waiting)})")
             if waiting:
-                waiting_text = "\n".join(
-                    f"{i}. <@{e.discord_id}>"
-                    for i, e in enumerate(waiting[:8], start=1)
-                )
+                for i, e in enumerate(waiting[:8], start=1):
+                    lines.append(f"{i}. <@{e.discord_id}>")
                 if len(waiting) > 8:
-                    waiting_text += f"\n...and {len(waiting) - 8} more"
+                    lines.append(f"...and {len(waiting) - 8} more")
             else:
-                waiting_text = "Queue is empty"
+                lines.append("(empty)")
+            lines.append("")
 
-            embed.add_field(
-                name=queue_name,
-                value=f"{active_text}\n\n{waiting_text}",
-                inline=True,
-            )
+        embed.description = "\n".join(lines)
+
+    embed.set_footer(text="Use Join/Start/Leave below. Press Refresh if this panel is stale.")
 
     return embed
 
@@ -167,6 +193,28 @@ def format_minutes(minutes: int) -> str:
     return f"{minutes} minute" if minutes == 1 else f"{minutes} minutes"
 
 
+def remaining_clock(now, expires_at) -> str:
+    if expires_at is None:
+        return "--:--"
+    remaining = max(0, int((expires_at - now).total_seconds()))
+    mm, ss = divmod(remaining, 60)
+    return f"{mm:02d}:{ss:02d}"
+
+
+def resolve_announce_channel_id(client, fallback_channel_id: int | None = None) -> int | None:
+    configured = client.config.get("hosting_announce_channel_id")
+    if configured:
+        return int(configured)
+    return fallback_channel_id
+
+
+def resolve_timeup_channel_id(client, fallback_channel_id: int | None = None) -> int | None:
+    configured = client.config.get("hosting_timeup_channel_id")
+    if configured:
+        return int(configured)
+    return resolve_announce_channel_id(client, fallback_channel_id)
+
+
 def cancel_task(tasks: dict, key):
     task = tasks.pop(key, None)
     if task and not task.done():
@@ -174,6 +222,8 @@ def cancel_task(tasks: dict, key):
 
 
 async def send_channel_message(client, channel_id: int, message: str):
+    if channel_id is None:
+        return
     channel = client.get_channel(channel_id) or await client.fetch_channel(channel_id)
     await channel.send(message)
 
@@ -196,6 +246,7 @@ async def _finish_session_after_delay(client, database, queue_name, entry_id, ch
     await asyncio.sleep(minutes * 60)
 
     next_entry = None
+    finished_discord_id = None
     async with database.session() as session:
         entry = await session.get(HostingQueueEntry, entry_id)
         if entry is None or entry.status != ACTIVE:
@@ -203,6 +254,7 @@ async def _finish_session_after_delay(client, database, queue_name, entry_id, ch
 
         entry.status       = DONE
         entry.completed_at = utc_now()
+        finished_discord_id = entry.discord_id
         await session.commit()
 
         next_entry = await get_next_waiting(session, queue_name)
@@ -210,9 +262,10 @@ async def _finish_session_after_delay(client, database, queue_name, entry_id, ch
             next_entry.channel_id = channel_id
             await session.commit()
 
+    timeup_channel_id = resolve_timeup_channel_id(client, channel_id)
     await send_channel_message(
-        client, channel_id,
-        f"<@{entry.discord_id}>, your {queue_name} hosting session is done.",
+        client, timeup_channel_id,
+        f"<@{finished_discord_id}>, your {queue_name} hosting session is done.",
     )
 
     if next_entry is not None:
@@ -263,23 +316,11 @@ async def _skip_after_grace(client, database, queue_name, entry_id, channel_id, 
 # Shared UI View
 # ---------------------------------------------------------------------------
 
-class HostingQueueView(discord.ui.View):
-    def __init__(self, database):
-        super().__init__(timeout=900)
-        self.database = database
-
-        for index, queue_name in enumerate(QUEUES):
-            self.add_item(JoinQueueButton(queue_name,  row=index))
-            self.add_item(StartQueueButton(queue_name, row=index))
-
-        self.add_item(LeaveQueueButton(row=3))
-        self.add_item(RefreshQueueButton(row=3))
-
-
 class JoinQueueButton(discord.ui.Button):
     def __init__(self, queue_name, row):
         super().__init__(
             label=f"Join {queue_name}",
+            emoji="➕",
             style=discord.ButtonStyle.primary,
             row=row,
         )
@@ -290,6 +331,7 @@ class JoinQueueButton(discord.ui.Button):
         now                 = utc_now()
         should_prompt_start = False
         next_entry_id       = None
+        announce_channel_id = resolve_announce_channel_id(interaction.client, interaction.channel_id)
 
         async with self.view.database.session() as session:
             result = await session.execute(
@@ -309,7 +351,7 @@ class JoinQueueButton(discord.ui.Button):
             entry = HostingQueueEntry(
                 queue_name=self.queue_name,
                 discord_id=discord_id,
-                channel_id=interaction.channel_id,
+                channel_id=announce_channel_id,
                 joined_at=now,
             )
             session.add(entry)
@@ -334,9 +376,11 @@ class JoinQueueButton(discord.ui.Button):
             schedule_start_grace(
                 interaction.client, self.view.database,
                 self.queue_name, next_entry_id,
-                interaction.channel_id, grace,
+                announce_channel_id, grace,
             )
-            await interaction.channel.send(
+            await send_channel_message(
+                interaction.client,
+                announce_channel_id,
                 f"{interaction.user.mention}, {self.queue_name} is ready. "
                 f"Press **Start {self.queue_name}** within {format_minutes(grace)}."
             )
@@ -346,6 +390,7 @@ class StartQueueButton(discord.ui.Button):
     def __init__(self, queue_name, row):
         super().__init__(
             label=f"Start {queue_name}",
+            emoji="▶️",
             style=discord.ButtonStyle.success,
             row=row,
         )
@@ -355,6 +400,7 @@ class StartQueueButton(discord.ui.Button):
         discord_id      = interaction.user.id
         now             = utc_now()
         session_minutes = int(interaction.client.config.get("hosting_session_minutes", 60))
+        announce_channel_id = resolve_announce_channel_id(interaction.client, interaction.channel_id)
 
         async with self.view.database.session() as session:
             active = await get_active(session, self.queue_name)
@@ -382,7 +428,7 @@ class StartQueueButton(discord.ui.Button):
             next_entry.status     = ACTIVE
             next_entry.started_at = now
             next_entry.expires_at = now + timedelta(minutes=session_minutes)
-            next_entry.channel_id = interaction.channel_id
+            next_entry.channel_id = announce_channel_id
             await session.commit()
             entry_id = next_entry.id
 
@@ -390,19 +436,85 @@ class StartQueueButton(discord.ui.Button):
         schedule_session_end(
             interaction.client, self.view.database,
             self.queue_name, entry_id,
-            interaction.channel_id, session_minutes,
+            announce_channel_id, session_minutes,
         )
 
         await interaction.response.send_message(
             f"{interaction.user.mention} started {self.queue_name} hosting. "
-            f"Session length: {format_minutes(session_minutes)}."
+            f"Session length: {format_minutes(session_minutes)}.",
+            ephemeral=True,
         )
+        await send_channel_message(
+            interaction.client,
+            announce_channel_id,
+            f"{interaction.user.mention} started {self.queue_name} hosting. "
+            f"Time left: {session_minutes:02d}:00",
+        )
+        await refresh_panel(interaction, self.view.database)
+
+
+class LeaveHostingButton(discord.ui.Button):
+    def __init__(self, row):
+        super().__init__(label="Leave Hosting", emoji="⏹️", style=discord.ButtonStyle.danger, row=row)
+
+    async def callback(self, interaction):
+        discord_id = interaction.user.id
+        now = utc_now()
+        ended = []
+
+        async with self.view.database.session() as session:
+            result = await session.execute(
+                select(HostingQueueEntry).where(
+                    HostingQueueEntry.discord_id == discord_id,
+                    HostingQueueEntry.status == ACTIVE,
+                )
+            )
+            active_entries = result.scalars().all()
+
+            if not active_entries:
+                await interaction.response.send_message("You are not currently hosting.", ephemeral=True)
+                return
+
+            for entry in active_entries:
+                entry.status = DONE
+                entry.completed_at = now
+                ended.append((entry.queue_name, entry.id, resolve_announce_channel_id(interaction.client, entry.channel_id)))
+
+            await session.commit()
+
+        for queue_name, entry_id, announce_channel_id in ended:
+            cancel_task(_session_tasks, (queue_name, entry_id))
+
+            next_entry = None
+            async with self.view.database.session() as session:
+                next_entry = await get_next_waiting(session, queue_name)
+                if next_entry is not None:
+                    next_entry.channel_id = announce_channel_id
+                    await session.commit()
+
+            await send_channel_message(
+                interaction.client,
+                announce_channel_id,
+                f"<@{discord_id}> ended {queue_name} hosting early.",
+            )
+
+            if next_entry is not None:
+                grace = int(interaction.client.config.get("hosting_start_grace_minutes", 5))
+                schedule_start_grace(interaction.client, self.view.database, queue_name, next_entry.id, announce_channel_id, grace)
+                await send_channel_message(
+                    interaction.client,
+                    announce_channel_id,
+                    f"<@{next_entry.discord_id}>, it is your turn for {queue_name}. "
+                    f"Press **Start {queue_name}** within {format_minutes(grace)}.",
+                )
+
+        await interaction.response.send_message("Stopped your active hosting session(s).", ephemeral=True)
         await refresh_panel(interaction, self.view.database)
 
 
 class LeaveQueueButton(discord.ui.Button):
     def __init__(self, row):
-        super().__init__(label="Leave Queue", style=discord.ButtonStyle.danger, row=row)
+        super().__init__(label="Leave Queue", emoji="➖", style=discord.ButtonStyle.danger, row=row)
 
     async def callback(self, interaction):
         discord_id = interaction.user.id
@@ -431,9 +543,23 @@ class LeaveQueueButton(discord.ui.Button):
 
 class RefreshQueueButton(discord.ui.Button):
     def __init__(self, row):
-        super().__init__(label="Refresh", style=discord.ButtonStyle.secondary, row=row)
+        super().__init__(label="Refresh", emoji="🔄", style=discord.ButtonStyle.secondary, row=row)
 
     async def callback(self, interaction):
         await interaction.response.defer(ephemeral=True)
         await refresh_panel(interaction, self.view.database)
         await interaction.followup.send("Queue panel refreshed.", ephemeral=True)
+
+
+class HostingQueueView(discord.ui.View):
+    def __init__(self, database):
+        super().__init__(timeout=None)
+        self.database = database
+
+        for index, queue_name in enumerate(QUEUES):
+            self.add_item(JoinQueueButton(queue_name,  row=index))
+            self.add_item(StartQueueButton(queue_name, row=index))
+
+        self.add_item(LeaveQueueButton(row=3))
+        self.add_item(LeaveHostingButton(row=3))
+        self.add_item(RefreshQueueButton(row=4))

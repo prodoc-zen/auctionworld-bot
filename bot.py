@@ -45,6 +45,8 @@ def load_config():
     config["weekly_quota_hours"]          = int(os.getenv("WEEKLY_QUOTA_HOURS",          "10"))
     config["hosting_session_minutes"]     = int(os.getenv("HOSTING_SESSION_MINUTES",     "60"))
     config["hosting_start_grace_minutes"] = int(os.getenv("HOSTING_START_GRACE_MINUTES",  "5"))
+    config["hosting_announce_channel_id"] = os.getenv("HOSTING_ANNOUNCE_CHANNEL_ID", config.get("hosting_announce_channel_id"))
+    config["hosting_timeup_channel_id"]   = os.getenv("HOSTING_TIMEUP_CHANNEL_ID",   config.get("hosting_timeup_channel_id"))
     return config
 
 

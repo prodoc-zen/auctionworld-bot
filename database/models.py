@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import List
 
-from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, String, UniqueConstraint
+from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, LargeBinary, String, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -43,19 +43,7 @@ class User(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now, onupdate=utc_now)
 
     transactions: Mapped[List["Transaction"]] = relationship(back_populates="user", cascade="all, delete-orphan")
-    admin_user: Mapped["AdminUser"] = relationship(back_populates="user", cascade="all, delete-orphan", uselist=False)
     attendance_records: Mapped[List["AttendanceRecord"]] = relationship(back_populates="user", cascade="all, delete-orphan")
-
-
-class AdminUser(Base):
-    __tablename__ = "admin_users"
-
-    discord_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.discord_id", ondelete="CASCADE"), primary_key=True)
-    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now, onupdate=utc_now)
-
-    user: Mapped[User] = relationship(back_populates="admin_user")
 
 
 class Transaction(Base):
@@ -178,6 +166,18 @@ class GachaShowcase(Base):
     discord_id: Mapped[int] = mapped_column(BigInteger, nullable=False, index=True)
     slot: Mapped[int] = mapped_column(BigInteger, nullable=False)
     card_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("gacha_cards.id", ondelete="CASCADE"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now, onupdate=utc_now)
+
+
+class GachaCharacterAsset(Base):
+    __tablename__ = "gacha_character_assets"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    character_name: Mapped[str] = mapped_column(String(100), nullable=False, unique=True, index=True)
+    image_url: Mapped[str] = mapped_column(String(500), nullable=True)
+    image_blob: Mapped[bytes] = mapped_column(LargeBinary(length=(16 * 1024 * 1024)), nullable=True)
+    image_mime: Mapped[str] = mapped_column(String(100), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now, onupdate=utc_now)
 

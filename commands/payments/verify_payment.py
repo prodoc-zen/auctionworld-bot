@@ -2,7 +2,7 @@ import discord
 from discord import app_commands
 from sqlalchemy import select
 
-from database.models import AdminProfile, AdminUser, Payment, User, utc_now
+from database.models import AdminProfile, Payment, User, utc_now
 
 name        = "verify-payment"
 description = "Verify a payment and create or upgrade the admin profile"
@@ -38,10 +38,6 @@ def register(tree, database):
 
             if await session.get(User, discord_id) is None:
                 session.add(User(discord_id=discord_id, jennies=2000))
-                await session.flush()
-
-            if await session.get(AdminUser, discord_id) is None:
-                session.add(AdminUser(discord_id=discord_id, is_active=True))
                 await session.flush()
 
             # Correct lookup by discord_id

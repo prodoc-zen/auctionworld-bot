@@ -1,9 +1,12 @@
 from datetime import datetime, timezone
+from uuid import uuid4
 
 import discord
 from discord import app_commands
+from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 
-from database.models import AdminUser, AttendanceRecord, Transaction, User, format_earnings, utc_now
+from database.models import AdminProfile, AttendanceRecord, Transaction, User, format_earnings, utc_now
 
 name        = "submithosting"
 description = "Submit a hosting session log"
@@ -128,14 +131,39 @@ def register(tree, database):
                 session.add(User(discord_id=discord_id, jennies=2000))
                 await session.flush()
 
-            if await session.get(AdminUser, discord_id) is None:
-                session.add(AdminUser(discord_id=discord_id, is_active=True))
-                await session.flush()
+            existing_record_result = await session.execute(
+                select(AttendanceRecord).where(
+                    AttendanceRecord.discord_id == discord_id,
+                    AttendanceRecord.time_in_at == time_in_dt,
+                    AttendanceRecord.time_out_at == time_out_dt,
+                )
+            )
+            existing_record = existing_record_result.scalar_one_or_none()
+            if existing_record is not None:
+                await interaction.response.send_message(
+                    f"This exact session already exists in attendance records (ID: {existing_record.id}).",
+                    ephemeral=True,
+                )
+                return
+
+            admin_result = await session.execute(
+                select(AdminProfile).where(AdminProfile.discord_id == discord_id)
+            )
+            admin_profile = admin_result.scalar_one_or_none()
+            if admin_profile is None and member is None:
+                await interaction.response.send_message(
+                    "You need an admin profile before submitting hosting records.",
+                    ephemeral=True,
+                )
+                return
 
             # Add jennies for hosting
             user = await session.get(User, discord_id)
             user.jennies += jennies_earned
-            reason = f"hosting:{int(time_in_dt.timestamp())}"
+            reason = (
+                f"hosting:{int(time_in_dt.timestamp())}:{int(time_out_dt.timestamp())}:"
+                f"{discord_id}:{uuid4().hex[:8]}"
+            )
             session.add(Transaction(discord_id=discord_id, amount=jennies_earned, reason=reason))
 
             record = AttendanceRecord(
@@ -149,7 +177,15 @@ def register(tree, database):
             session.add(record)
             await session.flush()
             hosting_id = record.id
-            await session.commit()
+            try:
+                await session.commit()
+            except IntegrityError:
+                await session.rollback()
+                await interaction.response.send_message(
+                    "This hosting submission already exists. Please change the time range slightly and try again.",
+                    ephemeral=True,
+                )
+                return
 
         embed = discord.Embed(title="Hosting Session", color=discord.Color.green())
         embed.add_field(name="Hosting ID",   value=str(hosting_id),                          inline=False)

@@ -2,7 +2,7 @@ import discord
 from discord import app_commands
 from sqlalchemy import select, update
 
-from database.models import AdminProfile, AdminUser, AttendanceRecord, GachaCard, GachaShowcase, Transaction, User, utc_now
+from database.models import AdminProfile, AttendanceRecord, GachaCard, GachaShowcase, Transaction, User
 
 name        = "change-discord"
 description = "Replace an admin's Discord account and migrate all their data"
@@ -60,7 +60,6 @@ def register(tree, database):
             await session.execute(update(Transaction).where(Transaction.discord_id == old_id).values(discord_id=new_id))
             await session.execute(update(GachaCard).where(GachaCard.discord_id == old_id).values(discord_id=new_id))
             await session.execute(update(GachaShowcase).where(GachaShowcase.discord_id == old_id).values(discord_id=new_id))
-            await session.execute(update(AdminUser).where(AdminUser.discord_id == old_id).values(discord_id=new_id))
 
             # Update profile
             profile.discord_id = new_id

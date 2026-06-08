@@ -1,7 +1,7 @@
 import discord
 from discord import app_commands
 
-from database.models import AdminProfile, AdminUser, Payment, User, utc_now
+from database.models import Payment, User
 
 name        = "submit-payment"
 description = "Submit payment proof to create or upgrade an admin profile"

@@ -1,6 +1,9 @@
 import discord
 from discord import app_commands
+from sqlalchemy import delete
+
 from commands.gacha._gacha_utils import load_pool, save_pool
+from database.models import GachaCharacterAsset
 
 name        = "remove-character"
 description = "Remove a character from the gacha pool (Developer only)"
@@ -37,6 +40,12 @@ def register(tree, database):
             return
 
         save_pool(pool)
+
+        async with database.session() as session:
+            await session.execute(
+                delete(GachaCharacterAsset).where(GachaCharacterAsset.character_name.ilike(character_name))
+            )
+            await session.commit()
 
         embed = discord.Embed(title="✅ Character Removed", color=discord.Color.red())
         embed.add_field(name="Name",   value=character_name,              inline=True)

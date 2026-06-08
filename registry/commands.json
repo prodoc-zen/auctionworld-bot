@@ -353,6 +353,26 @@
       "groups": []
     }
   },
+  "gacha-decks": {
+    "file": "commands/gacha/gacha_decks.py",
+    "description": "View your 3 selected gacha decks with images",
+    "usage": "/gacha-decks [member:]",
+    "access": {
+      "user_ids": [],
+      "role_ids": [],
+      "groups": []
+    }
+  },
+  "gacha-battle": {
+    "file": "commands/gacha/gacha_battle.py",
+    "description": "Battle using your selected decks",
+    "usage": "/gacha-battle opponent:",
+    "access": {
+      "user_ids": [],
+      "role_ids": [],
+      "groups": []
+    }
+  },
   "megaphone": {
     "file": "commands/megaphone/megaphone.py",
     "description": "Check if you are exempt from megaphone donation",

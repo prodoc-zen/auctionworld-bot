@@ -2,7 +2,7 @@ import discord
 from discord import app_commands
 from sqlalchemy import select
 
-from database.models import AdminProfile, AdminUser, User, utc_now
+from database.models import AdminProfile, User
 
 name        = "create-profile"
 description = "Manually create an admin profile"
@@ -45,10 +45,6 @@ def register(tree, database):
 
             if await session.get(User, discord_id) is None:
                 session.add(User(discord_id=discord_id, jennies=2000))
-                await session.flush()
-
-            if await session.get(AdminUser, discord_id) is None:
-                session.add(AdminUser(discord_id=discord_id, is_active=True))
                 await session.flush()
 
             profile = AdminProfile(

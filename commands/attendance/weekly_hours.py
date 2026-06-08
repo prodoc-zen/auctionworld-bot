@@ -4,7 +4,7 @@ import discord
 from discord import app_commands
 from sqlalchemy import or_, select
 
-from database.models import AdminUser, AttendanceRecord, utc_now
+from database.models import AdminProfile, AttendanceRecord, utc_now
 
 name        = "weeklyhours"
 description = "Check total timed hours for this week"
@@ -62,9 +62,8 @@ def register(tree, database):
         async with database.session() as session:
             if member is None:
                 result = await session.execute(
-                    select(AdminUser)
-                    .where(AdminUser.is_active.is_(True))
-                    .order_by(AdminUser.discord_id.asc())
+                    select(AdminProfile)
+                    .order_by(AdminProfile.discord_id.asc())
                 )
                 admins = result.scalars().all()
 

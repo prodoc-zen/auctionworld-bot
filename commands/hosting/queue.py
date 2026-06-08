@@ -11,4 +11,5 @@ def register(tree, database):
         await interaction.response.send_message(
             embed=embed,
             view=HostingQueueView(database),
+            ephemeral=True,
         )
