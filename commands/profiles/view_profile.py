@@ -32,7 +32,8 @@ def register(tree, database):
         start      = week_start(now)
 
         async with database.session() as session:
-            admin_profile = await session.get(AdminProfile, discord_id)
+            result = await session.execute(select(AdminProfile).where(AdminProfile.discord_id == discord_id))
+            admin_profile = result.scalar_one_or_none()
             if admin_profile is None:
                 await interaction.response.send_message(
                     f"{target.mention} does not have an admin profile.", ephemeral=True,

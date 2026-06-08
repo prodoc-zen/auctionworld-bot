@@ -1,5 +1,6 @@
 import discord
 from discord import app_commands
+from sqlalchemy import select
 
 from database.models import AdminProfile, utc_now
 
@@ -20,28 +21,26 @@ def register(tree, database):
         member: discord.Member,
         amount: int = 1,
     ):
-        # Check developer role
         user_role_ids = {role.id for role in interaction.user.roles}
         if DEVELOPER_ROLE_ID not in user_role_ids:
             await interaction.response.send_message(
-                "Only Developers can give priority tickets.",
-                ephemeral=True,
+                "Only Developers can give priority tickets.", ephemeral=True,
             )
             return
 
         if amount < 1:
-            await interaction.response.send_message(
-                "Amount must be at least 1.", ephemeral=True,
-            )
+            await interaction.response.send_message("Amount must be at least 1.", ephemeral=True)
             return
 
         async with database.session() as session:
-            profile = await session.get(AdminProfile, member.id)
+            result  = await session.execute(
+                select(AdminProfile).where(AdminProfile.discord_id == member.id)
+            )
+            profile = result.scalar_one_or_none()
 
             if profile is None:
                 await interaction.response.send_message(
-                    f"{member.mention} does not have an admin profile.",
-                    ephemeral=True,
+                    f"{member.mention} does not have an admin profile.", ephemeral=True,
                 )
                 return
 

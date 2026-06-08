@@ -1,5 +1,6 @@
 import discord
 from discord import app_commands
+from sqlalchemy import select
 
 from database.models import AdminProfile, AdminUser, User, utc_now
 
@@ -29,21 +30,26 @@ def register(tree, database):
         discord_id = member.id
 
         async with database.session() as session:
-            if await session.get(User, discord_id) is None:
-                session.add(User(discord_id=discord_id, jennies=0))
-                await session.flush()
+            # Correct check — query by discord_id not primary key
+            existing_result = await session.execute(
+                select(AdminProfile).where(AdminProfile.discord_id == discord_id)
+            )
+            existing = existing_result.scalar_one_or_none()
 
-            if await session.get(AdminUser, discord_id) is None:
-                session.add(AdminUser(discord_id=discord_id, is_active=True))
-                await session.flush()
-
-            existing = await session.get(AdminProfile, discord_id)
             if existing is not None:
                 await interaction.response.send_message(
                     f"{member.mention} already has a profile (Admin ID: `{existing.id}`).",
                     ephemeral=True,
                 )
                 return
+
+            if await session.get(User, discord_id) is None:
+                session.add(User(discord_id=discord_id, jennies=2000))
+                await session.flush()
+
+            if await session.get(AdminUser, discord_id) is None:
+                session.add(AdminUser(discord_id=discord_id, is_active=True))
+                await session.flush()
 
             profile = AdminProfile(
                 discord_id=discord_id,
@@ -56,9 +62,9 @@ def register(tree, database):
             await session.commit()
 
         embed = discord.Embed(title="Admin Profile Created ✅", color=discord.Color.green())
-        embed.add_field(name="Admin ID", value=str(profile_id),  inline=False)
-        embed.add_field(name="Discord",  value=member.mention,   inline=False)
-        embed.add_field(name="GT Name",  value=gt_name,          inline=False)
-        embed.add_field(name="Role",     value=role.value,        inline=False)
+        embed.add_field(name="Admin ID", value=str(profile_id), inline=False)
+        embed.add_field(name="Discord",  value=member.mention,  inline=False)
+        embed.add_field(name="GT Name",  value=gt_name,         inline=False)
+        embed.add_field(name="Role",     value=role.value,       inline=False)
 
         await interaction.response.send_message(embed=embed)
