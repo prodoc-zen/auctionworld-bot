@@ -13,6 +13,27 @@ def utc_now():
     return datetime.utcnow()
 
 
+def format_earnings(bgls: int, dls: int, wls: int) -> str:
+    """Format BGLs/DLs/WLs into a readable string, skipping zeros."""
+    parts = []
+    if bgls: parts.append(f"{bgls} BGLs")
+    if dls:  parts.append(f"{dls} DLs")
+    if wls:  parts.append(f"{wls} WLs")
+    return " ".join(parts) if parts else "0 WLs"
+
+
+def to_wls(bgls: int, dls: int, wls: int) -> int:
+    """Convert all earnings to WLs for math."""
+    return (bgls * 10000) + (dls * 100) + wls
+
+
+def from_wls(total_wls: int) -> tuple[int, int, int]:
+    """Convert total WLs back to BGLs, DLs, WLs."""
+    bgls, remainder = divmod(total_wls, 10000)
+    dls,  wls       = divmod(remainder, 100)
+    return bgls, dls, wls
+
+
 class User(Base):
     __tablename__ = "users"
 
@@ -57,7 +78,9 @@ class AttendanceRecord(Base):
     discord_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.discord_id", ondelete="CASCADE"), nullable=False, index=True)
     time_in_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now)
     time_out_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    earnings: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    bgls: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
+    dls: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
+    wls: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now, onupdate=utc_now)
 

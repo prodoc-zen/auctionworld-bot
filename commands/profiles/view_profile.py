@@ -2,9 +2,9 @@ from datetime import timedelta
 
 import discord
 from discord import app_commands
-from sqlalchemy import or_, select, func
+from sqlalchemy import select
 
-from database.models import AdminProfile, AttendanceRecord, User, utc_now
+from database.models import AdminProfile, AttendanceRecord, User, format_earnings, from_wls, to_wls, utc_now
 
 name        = "profile"
 description = "View an admin's profile"
@@ -21,27 +21,6 @@ def format_duration(total_seconds: float) -> str:
     return f"{hours}h {minutes}m"
 
 
-async def get_records(session, discord_id, start, now):
-    result = await session.execute(
-        select(AttendanceRecord).where(
-            AttendanceRecord.discord_id == discord_id,
-        )
-    )
-    return result.scalars().all()
-
-
-def calculate_time(records, start, now, weekly=True):
-    total_seconds = 0
-    for record in records:
-        if weekly and record.time_in_at < start:
-            continue
-        session_start = record.time_in_at if not weekly else max(record.time_in_at, start)
-        session_end   = record.time_out_at or now
-        if session_end > session_start:
-            total_seconds += (session_end - session_start).total_seconds()
-    return total_seconds
-
-
 def register(tree, database):
     @tree.command(name=name, description=description)
     @app_commands.describe(member="The admin to view (leave blank for yourself)")
@@ -53,36 +32,48 @@ def register(tree, database):
 
         async with database.session() as session:
             admin_profile = await session.get(AdminProfile, discord_id)
-
             if admin_profile is None:
                 await interaction.response.send_message(
-                    f"{target.mention} does not have an admin profile.",
-                    ephemeral=True,
+                    f"{target.mention} does not have an admin profile.", ephemeral=True,
                 )
                 return
 
-            user    = await session.get(User, discord_id)
-            records = await get_records(session, discord_id, start, now)
+            user = await session.get(User, discord_id)
 
-        weekly_secs  = calculate_time(records, start, now, weekly=True)
-        total_secs   = calculate_time(records, start, now, weekly=False)
+            result = await session.execute(
+                select(AttendanceRecord).where(AttendanceRecord.discord_id == discord_id)
+            )
+            records = result.scalars().all()
 
-        # Calculate earnings
-        weekly_earnings = [r.earnings for r in records if r.earnings and r.time_in_at >= start]
-        total_earnings  = [r.earnings for r in records if r.earnings]
-        weekly_earn_text = "\n".join(weekly_earnings) if weekly_earnings else "None"
-        total_earn_text  = f"{len(total_earnings)} session(s)" if total_earnings else "None"
+        # Time worked
+        weekly_secs = 0
+        total_secs  = 0
+        weekly_wls  = 0
+        total_wls   = 0
+
+        for record in records:
+            session_end = record.time_out_at or now
+            duration    = max(0, (session_end - record.time_in_at).total_seconds())
+            total_secs += duration
+            total_wls  += to_wls(record.bgls, record.dls, record.wls)
+
+            if record.time_in_at >= start:
+                weekly_secs += duration
+                weekly_wls  += to_wls(record.bgls, record.dls, record.wls)
+
+        weekly_earn = format_earnings(*from_wls(weekly_wls))
+        total_earn  = format_earnings(*from_wls(total_wls))
 
         embed = discord.Embed(
             title=f"Admin Profile  {admin_profile.id}",
             color=discord.Color.blurple(),
         )
         embed.set_thumbnail(url=target.display_avatar.url)
-        embed.add_field(name="💬 Discord",          value=target.mention,                           inline=True)
-        embed.add_field(name="🌿 GT Name",          value=admin_profile.gt_name,                   inline=True)
-        embed.add_field(name="👤 Role",             value=admin_profile.role,                      inline=True)
-        embed.add_field(name="🪙 Jennies",          value=f"{user.jennies if user else 0} jennies", inline=True)
-        embed.add_field(name="🎫 Priority Tickets", value=str(admin_profile.priority_tickets),     inline=True)
+        embed.add_field(name="💬 Discord",          value=target.mention,                            inline=True)
+        embed.add_field(name="🌿 GT Name",          value=admin_profile.gt_name,                    inline=True)
+        embed.add_field(name="👤 Role",             value=admin_profile.role,                       inline=True)
+        embed.add_field(name="🪙 Jennies",          value=f"{user.jennies if user else 0} jennies",  inline=True)
+        embed.add_field(name="🎫 Priority Tickets", value=str(admin_profile.priority_tickets),      inline=True)
         embed.add_field(
             name="⏱️ Time Worked",
             value=f"Weekly: {format_duration(weekly_secs)}\nTotal: {format_duration(total_secs)}",
@@ -90,7 +81,7 @@ def register(tree, database):
         )
         embed.add_field(
             name="💰 Earnings",
-            value=f"Weekly: {weekly_earn_text}\nTotal: {total_earn_text}",
+            value=f"Weekly: {weekly_earn}\nTotal: {total_earn}",
             inline=False,
         )
 
