@@ -126,7 +126,7 @@ def register(tree, database):
             elif player_num in SPECIAL_NUMBERS:
 
                 winnings = bet * 3
-                user.jennies += bet + winnings
+                user.jennies += + winnings
 
                 result_text = (
                     f"✨ You rolled **{player_num}**!\n"
@@ -142,7 +142,7 @@ def register(tree, database):
                 if player_value > dealer_value:
 
                     winnings = bet * 2
-                    user.jennies += bet + winnings
+                    user.jennies += + winnings
 
                     result_text = (
                         f"🏆 Your value (**{player_value}**) "
