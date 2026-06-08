@@ -352,5 +352,47 @@
       "role_ids": [],
       "groups": []
     }
+  },
+  "megaphone": {
+    "file": "commands/megaphone/megaphone.py",
+    "description": "Check if you are exempt from megaphone donation",
+    "usage": "/megaphone",
+    "access": {
+      "user_ids": [],
+      "role_ids": [],
+      "groups": []
+    }
+  },
+  "submit-megaphone": {
+    "file": "commands/megaphone/submit_megaphone.py",
+    "description": "Submit proof of megaphone donation",
+    "usage": "/submit-megaphone screenshot:",
+    "access": {
+      "user_ids": [],
+      "role_ids": [],
+      "groups": []
+    }
+  },
+  "view-blacklist": {
+    "file": "commands/blacklist/view_blacklist.py",
+    "description": "View all active blacklisted users",
+    "usage": "/view-blacklist",
+    "access": {
+      "user_ids": [],
+      "role_ids": [],
+      "groups": [
+        "moderators"
+      ]
+    }
+  },
+  "test-weekly-summary": {
+    "file": "commands/admin/test_weekly.py",
+    "description": "Manually trigger the weekly summary",
+    "usage": "/test-weekly-summary",
+    "access": {
+      "user_ids": [],
+      "role_ids": [],
+      "groups": []
+    }
   }
 }

@@ -180,3 +180,15 @@ class GachaShowcase(Base):
     card_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("gacha_cards.id", ondelete="CASCADE"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now, onupdate=utc_now)
+
+
+class MegaphoneSubmission(Base):
+    __tablename__ = "megaphone_submissions"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    discord_id: Mapped[int] = mapped_column(BigInteger, nullable=False, index=True)
+    screenshot_url: Mapped[str] = mapped_column(String(500), nullable=False)
+    verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    verified_by: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now, onupdate=utc_now)

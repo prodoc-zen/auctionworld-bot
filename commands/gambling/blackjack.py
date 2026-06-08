@@ -10,15 +10,13 @@ description = "Play blackjack (min 10, max 1000 Jennies)"
 MIN_BET = 10
 MAX_BET = 1000
 
-SUITS  = ["♠", "♥", "♦", "♣"]
-RANKS  = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"]
+SUITS = ["♠", "♥", "♦", "♣"]
+RANKS = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"]
 
 
 def card_value(rank):
-    if rank in ["J", "Q", "K"]:
-        return 10
-    if rank == "A":
-        return 11
+    if rank in ["J", "Q", "K"]: return 10
+    if rank == "A": return 11
     return int(rank)
 
 
@@ -31,12 +29,10 @@ def hand_value(hand):
     return value
 
 
-def hand_str(hand):
+def hand_str(hand, hide_second=False):
+    if hide_second:
+        return f"{hand[0][0]}{hand[0][1]} ??"
     return " ".join(f"{r}{s}" for r, s in hand)
-
-
-def draw(deck):
-    return deck.pop()
 
 
 def build_deck():
@@ -46,8 +42,91 @@ def build_deck():
 
 
 def is_soft_17(hand):
-    has_ace = any(r == "A" for r, _ in hand)
-    return has_ace and hand_value(hand) == 17
+    return any(r == "A" for r, _ in hand) and hand_value(hand) == 17
+
+
+def build_embed(player, dealer, bet, balance, hide_dealer=True, result_text=None):
+    embed = discord.Embed(title="🃏 Blackjack", color=discord.Color.dark_green())
+    embed.add_field(name="Your Hand",     value=f"{hand_str(player)} — **{hand_value(player)}**",                               inline=False)
+    embed.add_field(name="Dealer's Hand", value=hand_str(dealer, hide_second=hide_dealer) + (f" — **{hand_value(dealer)}**" if not hide_dealer else ""), inline=False)
+    if result_text:
+        embed.add_field(name="Result",  value=result_text,           inline=False)
+    embed.add_field(name="Bet",         value=f"**{bet} Jennies**",  inline=True)
+    embed.add_field(name="Balance",     value=f"**{balance} Jennies**", inline=True)
+    return embed
+
+
+class BlackjackView(discord.ui.View):
+    def __init__(self, player, dealer, deck, bet, discord_id, database):
+        super().__init__(timeout=60)
+        self.player    = player
+        self.dealer    = dealer
+        self.deck      = deck
+        self.bet       = bet
+        self.discord_id = discord_id
+        self.database  = database
+
+    async def end_game(self, interaction, result_text, winnings):
+        async with self.database.session() as session:
+            result = await session.execute(select(User).where(User.discord_id == self.discord_id))
+            user   = result.scalar_one_or_none()
+            user.jennies += winnings
+            await session.commit()
+            balance = user.jennies
+
+        for item in self.children:
+            item.disabled = True
+
+        embed = build_embed(self.player, self.dealer, self.bet, balance, hide_dealer=False, result_text=result_text)
+        await interaction.response.edit_message(embed=embed, view=self)
+        self.stop()
+
+    @discord.ui.button(label="Hit", style=discord.ButtonStyle.primary)
+    async def hit(self, interaction, button):
+        if interaction.user.id != self.discord_id:
+            await interaction.response.send_message("This isn't your game!", ephemeral=True)
+            return
+
+        self.player.append(self.deck.pop())
+        val = hand_value(self.player)
+
+        if val > 21:
+            await self.end_game(interaction, f"💥 **Bust!** You lose **{self.bet} Jennies**.", -self.bet)
+        elif val == 21:
+            await self.stand_logic(interaction)
+        else:
+            async with self.database.session() as session:
+                result  = await session.execute(select(User).where(User.discord_id == self.discord_id))
+                user    = result.scalar_one_or_none()
+                balance = user.jennies
+
+            embed = build_embed(self.player, self.dealer, self.bet, balance)
+            await interaction.response.edit_message(embed=embed, view=self)
+
+    @discord.ui.button(label="Stand", style=discord.ButtonStyle.secondary)
+    async def stand(self, interaction, button):
+        if interaction.user.id != self.discord_id:
+            await interaction.response.send_message("This isn't your game!", ephemeral=True)
+            return
+        await self.stand_logic(interaction)
+
+    async def stand_logic(self, interaction):
+        while hand_value(self.dealer) < 17 or is_soft_17(self.dealer):
+            self.dealer.append(self.deck.pop())
+
+        player_val = hand_value(self.player)
+        dealer_val = hand_value(self.dealer)
+
+        if dealer_val > 21 or player_val > dealer_val:
+            await self.end_game(interaction, f"✅ **You win {self.bet} Jennies!**", self.bet)
+        elif player_val == dealer_val:
+            await self.end_game(interaction, "🤝 **Push!** Your bet is returned.", 0)
+        else:
+            await self.end_game(interaction, f"❌ **Dealer wins.** You lose **{self.bet} Jennies**.", -self.bet)
+
+    async def on_timeout(self):
+        for item in self.children:
+            item.disabled = True
 
 
 def register(tree, database):
@@ -63,7 +142,6 @@ def register(tree, database):
         async with database.session() as session:
             result = await session.execute(select(User).where(User.discord_id == interaction.user.id))
             user   = result.scalar_one_or_none()
-
             if user is None:
                 user = User(discord_id=interaction.user.id, jennies=2000)
                 session.add(user)
@@ -75,47 +153,29 @@ def register(tree, database):
                 )
                 return
 
-            deck   = build_deck()
-            player = [draw(deck), draw(deck)]
-            dealer = [draw(deck), draw(deck)]
-
-            player_val = hand_value(player)
-            dealer_val = hand_value(dealer)
-
-            # Dealer hits until 17+ (stands on soft 17)
-            while hand_value(dealer) < 17 or is_soft_17(dealer):
-                dealer.append(draw(deck))
-
-            dealer_val = hand_value(dealer)
-
-            # Determine result
-            if player_val == 21 and len(player) == 2:
-                winnings = int(bet * 1.5)
-                result_text = f"🎉 **Blackjack!** You win **{winnings} Jennies**!"
-                user.jennies += winnings
-            elif player_val > 21:
-                winnings = -bet
-                result_text = f"💥 **Bust!** You lose **{bet} Jennies**."
-                user.jennies -= bet
-            elif dealer_val > 21 or player_val > dealer_val:
-                winnings = bet
-                result_text = f"✅ **You win {bet} Jennies!**"
-                user.jennies += bet
-            elif player_val == dealer_val:
-                winnings = 0
-                result_text = "🤝 **Push!** Your bet is returned."
-            else:
-                winnings = -bet
-                result_text = f"❌ **Dealer wins.** You lose **{bet} Jennies**."
-                user.jennies -= bet
-
+            user.jennies -= bet
             await session.commit()
-            new_balance = user.jennies
+            balance = user.jennies
 
-        embed = discord.Embed(title="🃏 Blackjack", color=discord.Color.dark_green())
-        embed.add_field(name="Your Hand",    value=f"{hand_str(player)} — **{player_val}**", inline=False)
-        embed.add_field(name="Dealer's Hand",value=f"{hand_str(dealer)} — **{dealer_val}**", inline=False)
-        embed.add_field(name="Result",       value=result_text,                              inline=False)
-        embed.add_field(name="Balance",      value=f"**{new_balance} Jennies**",             inline=False)
+        deck   = build_deck()
+        player = [deck.pop(), deck.pop()]
+        dealer = [deck.pop(), deck.pop()]
 
-        await interaction.response.send_message(embed=embed)
+        # Check for natural blackjack
+        if hand_value(player) == 21:
+            winnings = int(bet * 1.5)
+            async with database.session() as session:
+                result = await session.execute(select(User).where(User.discord_id == interaction.user.id))
+                user   = result.scalar_one_or_none()
+                user.jennies += bet + winnings
+                await session.commit()
+                balance = user.jennies
+
+            embed = build_embed(player, dealer, bet, balance, hide_dealer=False,
+                                result_text=f"🎉 **Blackjack!** You win **{winnings} Jennies**!")
+            await interaction.response.send_message(embed=embed)
+            return
+
+        view  = BlackjackView(player, dealer, deck, bet, interaction.user.id, database)
+        embed = build_embed(player, dealer, bet, balance)
+        await interaction.response.send_message(embed=embed, view=view)
