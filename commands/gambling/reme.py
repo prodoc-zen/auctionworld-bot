@@ -5,7 +5,7 @@ from sqlalchemy import select
 from database.models import User
 
 name = "reme"
-description = "Play REME Roulette (min 10, max 100000 Jennies)"
+description = "Play REME Roulette (min 10 , max 100000 Jennies)"
 
 MIN_BET = 10
 MAX_BET = 100000
