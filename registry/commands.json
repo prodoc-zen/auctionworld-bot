@@ -438,5 +438,15 @@
       "role_ids": [],
       "groups": []
     }
+  },
+  "reset-pity": {
+    "file": "commands/admin/reset_pity.py",
+    "description": "Reset a user gacha pity counter",
+    "usage": "/reset-pity member:",
+    "access": {
+      "user_ids": [],
+      "role_ids": [],
+      "groups": []
+    }
   }
 }

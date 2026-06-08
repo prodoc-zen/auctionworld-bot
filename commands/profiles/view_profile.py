@@ -2,10 +2,10 @@ from datetime import timedelta
 
 import discord
 from discord import app_commands
-from sqlalchemy import select
+from sqlalchemy import select, func
 
 from commands.gacha._gacha_utils import STAR_EMOJIS
-from database.models import AdminProfile, AttendanceRecord, GachaCard, GachaShowcase, User, format_earnings, from_wls, to_wls, utc_now
+from database.models import AdminProfile, AttendanceRecord, GachaCard, GachaShowcase, Strike, User, format_earnings, from_wls, to_wls, utc_now
 
 name        = "profile"
 description = "View an admin's profile"
@@ -46,6 +46,15 @@ def register(tree, database):
             )
             records = records_result.scalars().all()
 
+            # Strike count
+            strikes_result = await session.execute(
+                select(func.count(Strike.id)).where(
+                    Strike.discord_id == discord_id,
+                    Strike.active == True,
+                )
+            )
+            strike_count = strikes_result.scalar() or 0
+
             # Gacha showcase
             showcase_result = await session.execute(
                 select(GachaShowcase).where(GachaShowcase.discord_id == discord_id).order_by(GachaShowcase.slot)
@@ -76,6 +85,8 @@ def register(tree, database):
         weekly_earn = format_earnings(*from_wls(weekly_wls))
         total_earn  = format_earnings(*from_wls(total_wls))
 
+        strike_text = f"⚠️ {strike_count} active strike{'s' if strike_count != 1 else ''}" if strike_count else "✅ No strikes"
+
         embed = discord.Embed(title=f"Admin Profile  {admin_profile.id}", color=discord.Color.blurple())
         embed.set_thumbnail(url=target.display_avatar.url)
         embed.add_field(name="💬 Discord",          value=target.mention,                            inline=True)
@@ -83,6 +94,7 @@ def register(tree, database):
         embed.add_field(name="👤 Role",             value=admin_profile.role,                       inline=True)
         embed.add_field(name="🪙 Jennies",          value=f"{user.jennies if user else 0} jennies",  inline=True)
         embed.add_field(name="🎫 Priority Tickets", value=str(admin_profile.priority_tickets),      inline=True)
+        embed.add_field(name="⚠️ Strikes",          value=strike_text,                              inline=True)
         embed.add_field(
             name="⏱️ Time Worked",
             value=f"Weekly: {format_duration(weekly_secs)}\nTotal: {format_duration(total_secs)}",
@@ -91,7 +103,7 @@ def register(tree, database):
         embed.add_field(
             name="💰 Earnings",
             value=f"Weekly: {weekly_earn}\nTotal: {total_earn}",
-            inline=False,
+            inline=True,
         )
 
         if showcase_cards:

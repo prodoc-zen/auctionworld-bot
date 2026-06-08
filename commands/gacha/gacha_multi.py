@@ -1,7 +1,7 @@
 import discord
 from sqlalchemy import select
 from database.models import GachaCard, GachaPity, User
-from commands.gacha._gacha_utils import pull_many, PULL_COST, STAR_EMOJIS, RARITY_COLORS, MAX_LEVEL, PITY_4STAR
+from commands.gacha._gacha_utils import pull_many, PULL_COST, STAR_EMOJIS, MAX_LEVEL, PITY_4STAR
 
 name        = "gacha-multi"
 description = "Pull 10 gacha characters (1200 Jennies)"
@@ -36,10 +36,15 @@ def register(tree, database):
                 session.add(pity)
                 await session.flush()
 
-            pulls      = pull_many(MULTI_COUNT, pity.pulls_since_4star, pity.pulls_since_3star)
+            # Pull all 10 with correct pity tracking between each pull
+            pulls, new_p4, new_p3 = pull_many(MULTI_COUNT, pity.pulls_since_4star, pity.pulls_since_3star)
             user.jennies -= MULTI_COST
-            lines      = []
 
+            # Update pity to final state after all 10 pulls
+            pity.pulls_since_4star = new_p4
+            pity.pulls_since_3star = new_p3
+
+            lines = []
             for character, rarity in pulls:
                 stars = STAR_EMOJIS[rarity]
                 dup_result = await session.execute(
@@ -60,18 +65,7 @@ def register(tree, database):
                 else:
                     lines.append(f"{stars} **{character}** (max level)")
 
-                # Update pity
-                if rarity == 4:
-                    pity.pulls_since_4star = 0
-                    pity.pulls_since_3star = 0
-                elif rarity >= 3:
-                    pity.pulls_since_3star = 0
-                    pity.pulls_since_4star += 1
-                else:
-                    pity.pulls_since_4star += 1
-                    pity.pulls_since_3star += 1
-
-            pity_text = f"{pity.pulls_since_4star}/{PITY_4STAR} to guaranteed ⭐⭐⭐⭐"
+            pity_text = f"{new_p4}/{PITY_4STAR} to guaranteed ⭐⭐⭐⭐"
             await session.commit()
 
         embed = discord.Embed(title="🎴 10-Pull Results!", color=discord.Color.purple())
