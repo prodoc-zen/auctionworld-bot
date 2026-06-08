@@ -1,5 +1,6 @@
 import discord
 from discord import app_commands
+from sqlalchemy import select
 
 from database.models import AdminProfile, AdminUser, Payment, User, utc_now
 
@@ -35,18 +36,20 @@ def register(tree, database):
 
             discord_id = payment.discord_id
 
-            # Ensure user exists
             if await session.get(User, discord_id) is None:
-                session.add(User(discord_id=discord_id, jennies=0))
+                session.add(User(discord_id=discord_id, jennies=2000))
                 await session.flush()
 
-            # Ensure admin_user exists
             if await session.get(AdminUser, discord_id) is None:
                 session.add(AdminUser(discord_id=discord_id, is_active=True))
                 await session.flush()
 
-            # Create or update admin profile
-            profile = await session.get(AdminProfile, discord_id)
+            # Correct lookup by discord_id
+            profile_result = await session.execute(
+                select(AdminProfile).where(AdminProfile.discord_id == discord_id)
+            )
+            profile = profile_result.scalar_one_or_none()
+
             if profile is None:
                 session.add(AdminProfile(
                     discord_id=discord_id,
@@ -60,10 +63,10 @@ def register(tree, database):
             await session.commit()
 
         embed = discord.Embed(title="Payment Verified ✅", color=discord.Color.green())
-        embed.add_field(name="Payment ID",   value=str(payment_id),              inline=False)
-        embed.add_field(name="Discord",      value=f"<@{payment.discord_id}>",   inline=False)
-        embed.add_field(name="GT Name",      value=gt_name,                      inline=False)
-        embed.add_field(name="Role",         value=payment.reason,               inline=False)
-        embed.add_field(name="Verified By",  value=interaction.user.mention,     inline=False)
+        embed.add_field(name="Payment ID",  value=str(payment_id),            inline=False)
+        embed.add_field(name="Discord",     value=f"<@{payment.discord_id}>", inline=False)
+        embed.add_field(name="GT Name",     value=gt_name,                    inline=False)
+        embed.add_field(name="Role",        value=payment.reason,             inline=False)
+        embed.add_field(name="Verified By", value=interaction.user.mention,   inline=False)
 
         await interaction.response.send_message(embed=embed)
