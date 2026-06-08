@@ -2,7 +2,7 @@ import discord
 from discord import app_commands
 from sqlalchemy import select
 from database.models import GachaCard
-from commands.gacha._gacha_utils import STAR_EMOJIS, RARITY_COLORS
+from commands.gacha._gacha_utils import STAR_EMOJIS, RARITY_COLORS, get_character_image
 
 name        = "gacha-view"
 description = "View a specific character you own"
@@ -31,10 +31,13 @@ def register(tree, database):
 
         stars = STAR_EMOJIS[card.rarity]
         color = RARITY_COLORS[card.rarity]
+        image = get_character_image(card.character_name)
 
         embed = discord.Embed(title=card.character_name, color=color)
-        embed.add_field(name="Rarity", value=stars,             inline=True)
-        embed.add_field(name="Level",  value=str(card.level),   inline=True)
-        embed.add_field(name="Owned Since", value=card.created_at.strftime("%d %b %Y"), inline=True)
+        embed.add_field(name="Rarity",     value=stars,                                      inline=True)
+        embed.add_field(name="Level",      value=str(card.level),                            inline=True)
+        embed.add_field(name="Owned Since",value=card.created_at.strftime("%d %b %Y"),       inline=True)
+        if image:
+            embed.set_image(url=image)
 
         await interaction.response.send_message(embed=embed)

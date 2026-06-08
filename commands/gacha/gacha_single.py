@@ -27,17 +27,15 @@ def register(tree, database):
                 )
                 return
 
-            # Get or create pity
             pity = await session.get(GachaPity, discord_id)
             if pity is None:
                 pity = GachaPity(discord_id=discord_id)
                 session.add(pity)
                 await session.flush()
 
-            character, rarity = pull_character(pity.pulls_since_4star, pity.pulls_since_3star)
+            character, rarity, image = pull_character(pity.pulls_since_4star, pity.pulls_since_3star)
             user.jennies -= PULL_COST
 
-            # Update pity counters
             if rarity == 4:
                 pity.pulls_since_4star = 0
                 pity.pulls_since_3star = 0
@@ -48,7 +46,6 @@ def register(tree, database):
                 pity.pulls_since_4star += 1
                 pity.pulls_since_3star += 1
 
-            # Check duplicate
             dup_result = await session.execute(
                 select(GachaCard).where(
                     GachaCard.discord_id == discord_id,
@@ -81,6 +78,8 @@ def register(tree, database):
         embed.add_field(name="Character", value=f"**{character}**", inline=True)
         embed.add_field(name="Rarity",    value=stars,              inline=True)
         embed.add_field(name="Status",    value=status,             inline=False)
+        if image:
+            embed.set_image(url=image)
         embed.set_footer(text=f"Cost: {PULL_COST} Jennies | Balance: {user.jennies} Jennies | Pity: {pity_text}")
 
         await interaction.response.send_message(embed=embed)

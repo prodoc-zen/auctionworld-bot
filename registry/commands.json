@@ -448,5 +448,45 @@
       "role_ids": [],
       "groups": []
     }
+  },
+  "pay": {
+    "file": "commands/economy/pay.py",
+    "description": "Transfer Jennies to another user",
+    "usage": "/pay member: amount:",
+    "access": {
+      "user_ids": [],
+      "role_ids": [],
+      "groups": []
+    }
+  },
+  "add-character": {
+    "file": "commands/admin/add_character.py",
+    "description": "Add a new character to the gacha pool",
+    "usage": "/add-character character_name: rarity: [image_url:]",
+    "access": {
+      "user_ids": [],
+      "role_ids": [],
+      "groups": []
+    }
+  },
+  "remove-character": {
+    "file": "commands/admin/remove_character.py",
+    "description": "Remove a character from the gacha pool",
+    "usage": "/remove-character character_name:",
+    "access": {
+      "user_ids": [],
+      "role_ids": [],
+      "groups": []
+    }
+  },
+  "set-character-image": {
+    "file": "commands/admin/set_character_image.py",
+    "description": "Set or update a character image",
+    "usage": "/set-character-image character_name: [image_url:]",
+    "access": {
+      "user_ids": [],
+      "role_ids": [],
+      "groups": []
+    }
   }
 }

@@ -36,16 +36,16 @@ def register(tree, database):
                 session.add(pity)
                 await session.flush()
 
-            # Pull all 10 with correct pity tracking between each pull
             pulls, new_p4, new_p3 = pull_many(MULTI_COUNT, pity.pulls_since_4star, pity.pulls_since_3star)
             user.jennies -= MULTI_COST
-
-            # Update pity to final state after all 10 pulls
             pity.pulls_since_4star = new_p4
             pity.pulls_since_3star = new_p3
 
-            lines = []
-            for character, rarity in pulls:
+            lines      = []
+            best_image = None
+            best_rarity = 0
+
+            for character, rarity, image in pulls:
                 stars = STAR_EMOJIS[rarity]
                 dup_result = await session.execute(
                     select(GachaCard).where(
@@ -65,11 +65,18 @@ def register(tree, database):
                 else:
                     lines.append(f"{stars} **{character}** (max level)")
 
+                # Show image of the highest rarity pull
+                if image and rarity > best_rarity:
+                    best_image  = image
+                    best_rarity = rarity
+
             pity_text = f"{new_p4}/{PITY_4STAR} to guaranteed ⭐⭐⭐⭐"
             await session.commit()
 
         embed = discord.Embed(title="🎴 10-Pull Results!", color=discord.Color.purple())
         embed.description = "\n".join(lines)
+        if best_image:
+            embed.set_image(url=best_image)
         embed.set_footer(text=f"Cost: {MULTI_COST} Jennies | Balance: {user.jennies} Jennies | Pity: {pity_text}")
 
         await interaction.response.send_message(embed=embed)
