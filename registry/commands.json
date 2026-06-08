@@ -47,7 +47,7 @@
       "user_ids": [],
       "role_ids": [],
       "groups": [
-        "admins"
+        "moderators"
       ]
     }
   },
@@ -59,20 +59,434 @@
       "user_ids": [],
       "role_ids": [],
       "groups": [
-        "higher_admins"
+        "admins"
       ]
     }
   },
   "submithosting": {
     "file": "commands/attendance/submit_hosting.py",
     "description": "Submit a hosting session log with screenshots",
-    "usage": "/submithosting time_in: time_out: earnings: screenshot1: screenshot2: screenshot3:",
+    "usage": "/submithosting",
     "access": {
       "user_ids": [],
       "role_ids": [],
       "groups": [
         "admins"
       ]
+    }
+  },
+  "issue-strike": {
+    "file": "commands/strikes/issue_strike.py",
+    "description": "Issue a strike to a user",
+    "usage": "/issue-strike member: reason: screenshot:",
+    "access": {
+      "user_ids": [],
+      "role_ids": [],
+      "groups": [
+        "moderators"
+      ]
+    }
+  },
+  "remove-strike": {
+    "file": "commands/strikes/remove_strike.py",
+    "description": "Remove a strike by its ID",
+    "usage": "/remove-strike strike_id:",
+    "access": {
+      "user_ids": [],
+      "role_ids": [],
+      "groups": [
+        "moderators"
+      ]
+    }
+  },
+  "view-strike": {
+    "file": "commands/strikes/view_strike.py",
+    "description": "View strikes for a user",
+    "usage": "/view-strike member:",
+    "access": {
+      "user_ids": [],
+      "role_ids": [],
+      "groups": [
+        "moderators"
+      ]
+    }
+  },
+  "submit-payment": {
+    "file": "commands/payments/submit_payment.py",
+    "description": "Submit payment proof to create or upgrade an admin profile",
+    "usage": "/submit-payment reason: gt_name: screenshot:",
+    "access": {
+      "user_ids": [],
+      "role_ids": [],
+      "groups": []
+    }
+  },
+  "view-payment": {
+    "file": "commands/payments/view_payment.py",
+    "description": "View a payment submission by its ID",
+    "usage": "/view-payment payment_id:",
+    "access": {
+      "user_ids": [],
+      "role_ids": [],
+      "groups": [
+        "moderators"
+      ]
+    }
+  },
+  "verify-payment": {
+    "file": "commands/payments/verify_payment.py",
+    "description": "Verify a payment and create or upgrade the admin profile",
+    "usage": "/verify-payment payment_id: gt_name:",
+    "access": {
+      "user_ids": [],
+      "role_ids": [],
+      "groups": [
+        "moderators"
+      ]
+    }
+  },
+  "create-profile": {
+    "file": "commands/profiles/create_profile.py",
+    "description": "Manually create an admin profile",
+    "usage": "/create-profile member: gt_name: role:",
+    "access": {
+      "user_ids": [],
+      "role_ids": [],
+      "groups": [
+        "moderators"
+      ]
+    }
+  },
+  "profile": {
+    "file": "commands/profiles/view_profile.py",
+    "description": "View an admin profile",
+    "usage": "/profile [member]",
+    "access": {
+      "user_ids": [],
+      "role_ids": [],
+      "groups": []
+    }
+  },
+  "change-gt": {
+    "file": "commands/profiles/change_gt.py",
+    "description": "Change an admin GT name in their profile",
+    "usage": "/change-gt admin_id: new_gt_name:",
+    "access": {
+      "user_ids": [],
+      "role_ids": [],
+      "groups": [
+        "moderators"
+      ]
+    }
+  },
+  "change-discord": {
+    "file": "commands/profiles/change_discord.py",
+    "description": "Replace an admin Discord account in their profile",
+    "usage": "/change-discord admin_id: new_discord_id:",
+    "access": {
+      "user_ids": [],
+      "role_ids": [],
+      "groups": [
+        "moderators"
+      ]
+    }
+  },
+  "give-priority-ticket": {
+    "file": "commands/profiles/give_priority_ticket.py",
+    "description": "Give a priority ticket to an admin",
+    "usage": "/give-priority-ticket member: [amount]",
+    "access": {
+      "user_ids": [],
+      "role_ids": [],
+      "groups": []
+    }
+  },
+  "remove-blacklist": {
+    "file": "commands/blacklist/remove_blacklist.py",
+    "description": "Remove a user from the blacklist",
+    "usage": "/remove-blacklist member:",
+    "access": {
+      "user_ids": [],
+      "role_ids": [],
+      "groups": [
+        "moderators"
+      ]
+    }
+  },
+  "pause-interview": {
+    "file": "commands/tickets/pause_interview.py",
+    "description": "Pause an interview in this ticket",
+    "usage": "/pause-interview",
+    "access": {
+      "user_ids": [],
+      "role_ids": [],
+      "groups": [
+        "moderators"
+      ]
+    }
+  },
+  "resume-interview": {
+    "file": "commands/tickets/resume_interview.py",
+    "description": "Resume a paused interview in this ticket",
+    "usage": "/resume-interview",
+    "access": {
+      "user_ids": [],
+      "role_ids": [],
+      "groups": [
+        "moderators"
+      ]
+    }
+  },
+  "close-ticket": {
+    "file": "commands/tickets/close_ticket.py",
+    "description": "Close this ticket",
+    "usage": "/close-ticket",
+    "access": {
+      "user_ids": [],
+      "role_ids": [],
+      "groups": [
+        "moderators"
+      ]
+    }
+  },
+  "open-ticket": {
+    "file": "commands/tickets/open_ticket.py",
+    "description": "Reopen a closed ticket",
+    "usage": "/open-ticket",
+    "access": {
+      "user_ids": [],
+      "role_ids": [],
+      "groups": [
+        "moderators"
+      ]
+    }
+  },
+  "add-blacklist": {
+    "file": "commands/blacklist/add_blacklist.py",
+    "description": "Add a user to the blacklist",
+    "usage": "/add-blacklist member: reason: screenshot:",
+    "access": {
+      "user_ids": [],
+      "role_ids": [],
+      "groups": [
+        "moderators"
+      ]
+    }
+  },
+  "blackjack": {
+    "file": "commands/gambling/blackjack.py",
+    "description": "Play blackjack",
+    "usage": "/blackjack bet:",
+    "access": {
+      "user_ids": [],
+      "role_ids": [],
+      "groups": []
+    }
+  },
+  "slots": {
+    "file": "commands/gambling/slots.py",
+    "description": "Play the slot machine",
+    "usage": "/slots bet:",
+    "access": {
+      "user_ids": [],
+      "role_ids": [],
+      "groups": []
+    }
+  },
+  "roulette": {
+    "file": "commands/gambling/roulette.py",
+    "description": "Play European roulette",
+    "usage": "/roulette bet: bet_type:",
+    "access": {
+      "user_ids": [],
+      "role_ids": [],
+      "groups": []
+    }
+  },
+  "gacha-single": {
+    "file": "commands/gacha/gacha_single.py",
+    "description": "Pull 1 gacha character",
+    "usage": "/gacha-single",
+    "access": {
+      "user_ids": [],
+      "role_ids": [],
+      "groups": []
+    }
+  },
+  "gacha-multi": {
+    "file": "commands/gacha/gacha_multi.py",
+    "description": "Pull 10 gacha characters",
+    "usage": "/gacha-multi",
+    "access": {
+      "user_ids": [],
+      "role_ids": [],
+      "groups": []
+    }
+  },
+  "gacha-characters": {
+    "file": "commands/gacha/gacha_characters.py",
+    "description": "View your gacha collection",
+    "usage": "/gacha-characters",
+    "access": {
+      "user_ids": [],
+      "role_ids": [],
+      "groups": []
+    }
+  },
+  "gacha-view": {
+    "file": "commands/gacha/gacha_view.py",
+    "description": "View a specific character you own",
+    "usage": "/gacha-view character_name:",
+    "access": {
+      "user_ids": [],
+      "role_ids": [],
+      "groups": []
+    }
+  },
+  "gacha-showcase": {
+    "file": "commands/gacha/gacha_showcase.py",
+    "description": "Choose characters to showcase on your profile",
+    "usage": "/gacha-showcase slot: character_name:",
+    "access": {
+      "user_ids": [],
+      "role_ids": [],
+      "groups": []
+    }
+  },
+  "megaphone": {
+    "file": "commands/megaphone/megaphone.py",
+    "description": "Check if you are exempt from megaphone donation",
+    "usage": "/megaphone",
+    "access": {
+      "user_ids": [],
+      "role_ids": [],
+      "groups": []
+    }
+  },
+  "submit-megaphone": {
+    "file": "commands/megaphone/submit_megaphone.py",
+    "description": "Submit proof of megaphone donation",
+    "usage": "/submit-megaphone screenshot:",
+    "access": {
+      "user_ids": [],
+      "role_ids": [],
+      "groups": []
+    }
+  },
+  "view-blacklist": {
+    "file": "commands/blacklist/view_blacklist.py",
+    "description": "View all active blacklisted users",
+    "usage": "/view-blacklist",
+    "access": {
+      "user_ids": [],
+      "role_ids": [],
+      "groups": [
+        "moderators"
+      ]
+    }
+  },
+  "test-weekly-summary": {
+    "file": "commands/admin/test_weekly.py",
+    "description": "Manually trigger the weekly summary",
+    "usage": "/test-weekly-summary",
+    "access": {
+      "user_ids": [],
+      "role_ids": [],
+      "groups": []
+    }
+  },
+  "verify-megaphone": {
+    "file": "commands/megaphone/verify_megaphone.py",
+    "description": "Verify a megaphone donation submission",
+    "usage": "/verify-megaphone submission_id:",
+    "access": {
+      "user_ids": [],
+      "role_ids": [],
+      "groups": [
+        "moderators"
+      ]
+    }
+  },
+  "view-megaphone": {
+    "file": "commands/megaphone/view_megaphone.py",
+    "description": "View pending megaphone submissions",
+    "usage": "/view-megaphone",
+    "access": {
+      "user_ids": [],
+      "role_ids": [],
+      "groups": [
+        "moderators"
+      ]
+    }
+  },
+  "give-jennies": {
+    "file": "commands/economy/give_jennies.py",
+    "description": "Give Jennies to a user",
+    "usage": "/give-jennies member: amount: [reason:]",
+    "access": {
+      "user_ids": [],
+      "role_ids": [],
+      "groups": []
+    }
+  },
+  "take-jennies": {
+    "file": "commands/economy/take_jennies.py",
+    "description": "Take Jennies from a user",
+    "usage": "/take-jennies member: amount: [reason:]",
+    "access": {
+      "user_ids": [],
+      "role_ids": [],
+      "groups": []
+    }
+  },
+  "reset-pity": {
+    "file": "commands/admin/reset_pity.py",
+    "description": "Reset a user gacha pity counter",
+    "usage": "/reset-pity member:",
+    "access": {
+      "user_ids": [],
+      "role_ids": [],
+      "groups": []
+    }
+  },
+  "pay": {
+    "file": "commands/economy/pay.py",
+    "description": "Transfer Jennies to another user",
+    "usage": "/pay member: amount:",
+    "access": {
+      "user_ids": [],
+      "role_ids": [],
+      "groups": []
+    }
+  },
+  "add-character": {
+    "file": "commands/admin/add_character.py",
+    "description": "Add a new character to the gacha pool",
+    "usage": "/add-character character_name: rarity: [image_url:]",
+    "access": {
+      "user_ids": [],
+      "role_ids": [],
+      "groups": []
+    }
+  },
+  "remove-character": {
+    "file": "commands/admin/remove_character.py",
+    "description": "Remove a character from the gacha pool",
+    "usage": "/remove-character character_name:",
+    "access": {
+      "user_ids": [],
+      "role_ids": [],
+      "groups": []
+    }
+  },
+  "set-character-image": {
+    "file": "commands/admin/set_character_image.py",
+    "description": "Set or update a character image",
+    "usage": "/set-character-image character_name: [image_url:]",
+    "access": {
+      "user_ids": [],
+      "role_ids": [],
+      "groups": []
     }
   }
 }

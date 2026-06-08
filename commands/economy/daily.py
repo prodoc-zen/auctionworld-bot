@@ -8,7 +8,7 @@ from database.models import Transaction, User
 name        = "daily"
 description = "Claim a daily Jennies reward"
 
-REWARD_AMOUNT = 100
+REWARD_AMOUNT = 240
 
 
 def register(tree, database):
@@ -23,7 +23,7 @@ def register(tree, database):
             user   = result.scalar_one_or_none()
 
             if user is None:
-                user = User(discord_id=discord_id, jennies=0)
+                user = User(discord_id=discord_id, jennies=2000)
                 session.add(user)
 
             user.jennies += REWARD_AMOUNT
@@ -40,5 +40,5 @@ def register(tree, database):
                 return
 
         await interaction.response.send_message(
-            f"{interaction.user.mention}, you claimed {REWARD_AMOUNT} Jennies."
+            f"{interaction.user.mention}, you claimed {REWARD_AMOUNT} Jennies! 💰"
         )

@@ -3,14 +3,13 @@ from datetime import datetime, timezone
 import discord
 from discord import app_commands
 
-from database.models import AdminUser, AttendanceRecord, User, utc_now
+from database.models import AdminUser, AttendanceRecord, Transaction, User, format_earnings, utc_now
 
 name        = "submithosting"
-description = "Submit a hosting session log with screenshots"
+description = "Submit a hosting session log"
 
 HOSTING_SESSIONS_CHANNEL_ID = 1447015434959327292
-MIN_ATTACHMENTS = 3
-MAX_ATTACHMENTS = 10
+JENNIES_PER_MINUTE          = 8
 
 
 def parse_time(time_str: str) -> datetime | None:
@@ -20,12 +19,7 @@ def parse_time(time_str: str) -> datetime | None:
         try:
             parsed = datetime.strptime(time_str, fmt)
             now    = datetime.now(timezone.utc)
-            return now.replace(
-                hour=parsed.hour,
-                minute=parsed.minute,
-                second=parsed.second,
-                microsecond=0,
-            )
+            return now.replace(hour=parsed.hour, minute=parsed.minute, second=parsed.second, microsecond=0)
         except ValueError:
             continue
     return None
@@ -50,7 +44,9 @@ def register(tree, database):
     @app_commands.describe(
         time_in="Time you started hosting (e.g. 14:00 or 2:00 PM)",
         time_out="Time you finished hosting (e.g. 15:30 or 3:30 PM)",
-        earnings="What you earned (e.g. 1 BGLs 27 WLs)",
+        bgls="BGLs earned (leave blank if none)",
+        dls="DLs earned (leave blank if none)",
+        wls="WLs earned (leave blank if none)",
         screenshot1="Screenshot 1 (required)",
         screenshot2="Screenshot 2 (required)",
         screenshot3="Screenshot 3 (required)",
@@ -67,10 +63,12 @@ def register(tree, database):
         interaction,
         time_in:     str,
         time_out:    str,
-        earnings:    str,
         screenshot1: discord.Attachment,
         screenshot2: discord.Attachment,
         screenshot3: discord.Attachment,
+        bgls:        int = 0,
+        dls:         int = 0,
+        wls:         int = 0,
         screenshot4: discord.Attachment = None,
         screenshot5: discord.Attachment = None,
         screenshot6: discord.Attachment = None,
@@ -83,7 +81,6 @@ def register(tree, database):
         target     = member or interaction.user
         discord_id = target.id
 
-        # Collect all provided attachments
         all_attachments = [
             a for a in [
                 screenshot1, screenshot2, screenshot3, screenshot4,
@@ -92,16 +89,13 @@ def register(tree, database):
             ] if a is not None
         ]
 
-        # Validate all are images
         non_images = [a.filename for a in all_attachments if not is_image(a)]
         if non_images:
             await interaction.response.send_message(
-                f"These files are not images: {', '.join(non_images)}. Please upload image files only.",
-                ephemeral=True,
+                f"These files are not images: {', '.join(non_images)}.", ephemeral=True,
             )
             return
 
-        # Parse times
         time_in_dt  = parse_time(time_in)
         time_out_dt = parse_time(time_out)
 
@@ -120,54 +114,58 @@ def register(tree, database):
             return
 
         if time_out_dt <= time_in_dt:
-            await interaction.response.send_message(
-                "Time-out must be after time-in.",
-                ephemeral=True,
-            )
+            await interaction.response.send_message("Time-out must be after time-in.", ephemeral=True)
             return
 
-        duration_text = format_duration((time_out_dt - time_in_dt).total_seconds())
+        total_seconds = (time_out_dt - time_in_dt).total_seconds()
+        total_minutes = int(total_seconds // 60)
+        jennies_earned = total_minutes * JENNIES_PER_MINUTE
+        duration_text  = format_duration(total_seconds)
+        earnings_text  = format_earnings(bgls, dls, wls)
 
         async with database.session() as session:
             if await session.get(User, discord_id) is None:
-                session.add(User(discord_id=discord_id, jennies=0))
+                session.add(User(discord_id=discord_id, jennies=2000))
                 await session.flush()
 
             if await session.get(AdminUser, discord_id) is None:
                 session.add(AdminUser(discord_id=discord_id, is_active=True))
                 await session.flush()
 
+            # Add jennies for hosting
+            user = await session.get(User, discord_id)
+            user.jennies += jennies_earned
+            reason = f"hosting:{int(time_in_dt.timestamp())}"
+            session.add(Transaction(discord_id=discord_id, amount=jennies_earned, reason=reason))
+
             record = AttendanceRecord(
                 discord_id=discord_id,
                 time_in_at=time_in_dt,
                 time_out_at=time_out_dt,
+                bgls=bgls,
+                dls=dls,
+                wls=wls,
             )
             session.add(record)
             await session.flush()
             hosting_id = record.id
             await session.commit()
 
-        # Build the embed with the first image as the main image
-        embed = discord.Embed(
-            title="Hosting Session",
-            color=discord.Color.green(),
-        )
-        embed.add_field(name="Hosting ID",  value=str(hosting_id),                          inline=False)
-        embed.add_field(name="Discord",     value=target.mention,                            inline=False)
-        embed.add_field(name="Earnings",    value=earnings,                                  inline=False)
-        embed.add_field(name="Time Worked", value=duration_text,                             inline=False)
-        embed.add_field(name="Date",        value=time_in_dt.strftime("%d %b %Y %H:%M UTC"), inline=False)
+        embed = discord.Embed(title="Hosting Session", color=discord.Color.green())
+        embed.add_field(name="Hosting ID",   value=str(hosting_id),                          inline=False)
+        embed.add_field(name="Discord",      value=target.mention,                            inline=False)
+        embed.add_field(name="Earnings",     value=earnings_text,                             inline=False)
+        embed.add_field(name="Time Worked",  value=duration_text,                             inline=False)
+        embed.add_field(name="Jennies Earned", value=f"+{jennies_earned} Jennies ({total_minutes} min × {JENNIES_PER_MINUTE})", inline=False)
+        embed.add_field(name="Date",         value=time_in_dt.strftime("%d %b %Y %H:%M UTC"), inline=False)
         embed.set_image(url=all_attachments[0].url)
 
-        # Post to #hosting-sessions
         channel = interaction.client.get_channel(HOSTING_SESSIONS_CHANNEL_ID)
         if channel is None:
             channel = await interaction.client.fetch_channel(HOSTING_SESSIONS_CHANNEL_ID)
 
-        # Send main embed with first image
         await channel.send(embed=embed)
 
-        # Send remaining images as a follow-up grid if there are more than 1
         if len(all_attachments) > 1:
             extra_embeds = []
             for attachment in all_attachments[1:]:
@@ -177,6 +175,6 @@ def register(tree, database):
             await channel.send(embeds=extra_embeds)
 
         await interaction.response.send_message(
-            f"✅ Hosting session submitted! Check <#{HOSTING_SESSIONS_CHANNEL_ID}>.",
+            f"✅ Submitted! You earned **{jennies_earned} Jennies** for {duration_text} of hosting. Check <#{HOSTING_SESSIONS_CHANNEL_ID}>.",
             ephemeral=True,
         )

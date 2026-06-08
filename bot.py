@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 from commands.hosting._queue_utils import recover_active_sessions
 from database.db import Database
 from handlers.command_loader import load_commands
+from tasks.weekly_summary import start_weekly_summary_task
 from utils.logger import get_logger
 
 
@@ -34,16 +35,16 @@ def load_config():
 
     config["token"] = os.getenv("DISCORD_TOKEN", config.get("token", ""))
     database = config.setdefault("database", {})
-    database["host"]     = os.getenv("DB_HOST",     database.get("host",     "localhost"))
-    database["user"]     = os.getenv("DB_USER",     database.get("user",     "root"))
-    database["password"] = os.getenv("DB_PASSWORD", database.get("password", ""))
-    database["name"]     = os.getenv("DB_NAME",     database.get("name",     "auctionworld"))
-    database["port"]     = int(os.getenv("DB_PORT", database.get("port",     3306)))
-    database["echo"]     = env_bool("DB_ECHO",      database.get("echo",     False))
-    config["guild_id"]                   = os.getenv("GUILD_ID", config.get("guild_id"))
-    config["weekly_quota_hours"]         = int(os.getenv("WEEKLY_QUOTA_HOURS",         "10"))
-    config["hosting_session_minutes"]    = int(os.getenv("HOSTING_SESSION_MINUTES",    "60"))
-    config["hosting_start_grace_minutes"]= int(os.getenv("HOSTING_START_GRACE_MINUTES", "5"))
+    database["host"]      = os.getenv("DB_HOST",     database.get("host",     "localhost"))
+    database["user"]      = os.getenv("DB_USER",     database.get("user",     "root"))
+    database["password"]  = os.getenv("DB_PASSWORD", database.get("password", ""))
+    database["name"]      = os.getenv("DB_NAME",     database.get("name",     "auctionworld"))
+    database["port"]      = int(os.getenv("DB_PORT", database.get("port",     3306)))
+    database["echo"]      = env_bool("DB_ECHO",      database.get("echo",     False))
+    config["guild_id"]                    = os.getenv("GUILD_ID", config.get("guild_id"))
+    config["weekly_quota_hours"]          = int(os.getenv("WEEKLY_QUOTA_HOURS",          "10"))
+    config["hosting_session_minutes"]     = int(os.getenv("HOSTING_SESSION_MINUTES",     "60"))
+    config["hosting_start_grace_minutes"] = int(os.getenv("HOSTING_START_GRACE_MINUTES",  "5"))
     return config
 
 
@@ -78,11 +79,12 @@ class AuctionWorldClient(discord.Client):
             await self.tree.sync()
             logger.info("Synced global slash commands")
 
+        # Start background tasks
+        asyncio.create_task(start_weekly_summary_task(self, self.database))
+
     async def on_ready(self):
         logger.info("Logged in as %s", self.user)
         logger.info("Loaded commands: %s", ", ".join(sorted(self.commands.keys())))
-
-        # Recover any hosting sessions that were active before a restart
         await recover_active_sessions(self, self.database)
 
     async def close(self):

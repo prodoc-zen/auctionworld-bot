@@ -1,0 +1,54 @@
+{
+  "1": {
+    "rate": 78.0,
+    "characters": [
+      {"name": "Diamond Mannequin", "image": null},
+      {"name": "Holographic Mannequin", "image": null},
+      {"name": "LOL Mannequin", "image": null},
+      {"name": "Mannequin", "image": null},
+      {"name": "OMG Mannequin", "image": null},
+      {"name": "Pearl Mannequin", "image": null},
+      {"name": "Sad Mannequin", "image": null},
+      {"name": "Sandtopian", "image": null},
+      {"name": "Shiny Mannequin", "image": null},
+      {"name": "Snowtopian", "image": null},
+      {"name": "Troll Mannequin", "image": null}
+    ]
+  },
+  "2": {
+    "rate": 18.5,
+    "characters": [
+      {"name": "Alpha", "image": null},
+      {"name": "Bruno", "image": null},
+      {"name": "Chungus", "image": null},
+      {"name": "DJ Salad", "image": null},
+      {"name": "Kermit", "image": null},
+      {"name": "McChicken", "image": null},
+      {"name": "Ninja", "image": null},
+      {"name": "Pro", "image": null},
+      {"name": "Ronald", "image": null},
+      {"name": "Snoopy", "image": null},
+      {"name": "Tralala", "image": null}
+    ]
+  },
+  "3": {
+    "rate": 3.0,
+    "characters": [
+      {"name": "Chaos", "image": null},
+      {"name": "hahs", "image": null},
+      {"name": "Jinbong", "image": null},
+      {"name": "Koiwai", "image": null},
+      {"name": "Pixel", "image": null},
+      {"name": "Ur7MoD", "image": null}
+    ]
+  },
+  "4": {
+    "rate": 0.5,
+    "characters": [
+      {"name": "Molecule", "image": null},
+      {"name": "Pipep", "image": null},
+      {"name": "Royanne", "image": null},
+      {"name": "Scorpiiu", "image": null}
+    ]
+  }
+}
