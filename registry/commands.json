@@ -426,9 +426,7 @@
     "access": {
       "user_ids": [],
       "role_ids": [],
-      "groups": [
-        "admins"
-      ]
+      "groups": []
     }
   },
   "take-jennies": {
@@ -438,9 +436,7 @@
     "access": {
       "user_ids": [],
       "role_ids": [],
-      "groups": [
-        "admins"
-      ]
+      "groups": []
     }
   }
 }

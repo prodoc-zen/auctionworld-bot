@@ -4,7 +4,9 @@ from sqlalchemy import select
 from database.models import User
 
 name        = "take-jennies"
-description = "Take Jennies from a user"
+description = "Take Jennies from a user (Developer only)"
+
+DEVELOPER_ROLE_ID = 1457710235069186349
 
 
 def register(tree, database):
@@ -15,6 +17,10 @@ def register(tree, database):
         reason="Reason (optional)",
     )
     async def take_jennies(interaction, member: discord.Member, amount: int, reason: str = "Manual adjustment"):
+        if DEVELOPER_ROLE_ID not in {role.id for role in interaction.user.roles}:
+            await interaction.response.send_message("Only Developers can use this command.", ephemeral=True)
+            return
+
         if amount <= 0:
             await interaction.response.send_message("Amount must be positive.", ephemeral=True)
             return
