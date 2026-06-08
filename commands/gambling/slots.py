@@ -5,10 +5,7 @@ from sqlalchemy import select
 from database.models import User
 
 name        = "slots"
-description = "Play the slot machine (min 10, max 1000 Jennies)"
-
-MIN_BET = 10
-MAX_BET = 1000
+description = "Play the slot machine"
 
 SYMBOLS = [
     ("💎", 100),
@@ -28,12 +25,10 @@ def spin():
 
 def register(tree, database):
     @tree.command(name=name, description=description)
-    @app_commands.describe(bet="Amount of Jennies to bet (10–1000)")
+    @app_commands.describe(bet="Amount of Jennies to bet")
     async def slots(interaction, bet: int):
-        if bet < MIN_BET or bet > MAX_BET:
-            await interaction.response.send_message(
-                f"Bet must be between {MIN_BET} and {MAX_BET} Jennies.", ephemeral=True,
-            )
+        if bet < 1:
+            await interaction.response.send_message("Bet must be at least 1 Jennie.", ephemeral=True)
             return
 
         async with database.session() as session:
@@ -46,7 +41,7 @@ def register(tree, database):
 
             if user.jennies < bet:
                 await interaction.response.send_message(
-                    f"You only have **{user.jennies} Jennies**.", ephemeral=True,
+                    f"You only have **{user.jennies:,} Jennies**.", ephemeral=True,
                 )
                 return
 
@@ -55,31 +50,27 @@ def register(tree, database):
             reel3 = spin()
             display = f"{reel1[0]} | {reel2[0]} | {reel3[0]}"
 
-            # Deduct bet upfront
             user.jennies -= bet
 
             if reel1[0] == reel2[0] == reel3[0]:
-                # All three match — full multiplier
-                winnings    = bet * reel1[1]
+                winnings     = bet * reel1[1]
                 user.jennies += winnings
-                result_text  = f"🎰 **JACKPOT! {reel1[1]}x** — You win **{winnings} Jennies**!"
+                result_text  = f"🎰 **JACKPOT! {reel1[1]}x** — You win **{winnings:,} Jennies**!"
             elif reel1[0] == reel2[0] or reel2[0] == reel3[0] or reel1[0] == reel3[0]:
-                # Two match — return bet + half multiplier bonus
                 sym          = reel1 if (reel1[0] == reel2[0] or reel1[0] == reel3[0]) else reel2
                 bonus        = max(1, int(bet * sym[1] * 0.25))
                 winnings     = bet + bonus
                 user.jennies += winnings
-                result_text  = f"✅ **Two of a kind!** You win **{winnings} Jennies** (+{bonus} bonus)!"
+                result_text  = f"✅ **Two of a kind!** You win **{winnings:,} Jennies** (+{bonus:,} bonus)!"
             else:
-                # No match — bet already deducted
-                result_text = f"❌ No match. You lose **{bet} Jennies**."
+                result_text = f"❌ No match. You lose **{bet:,} Jennies**."
 
             await session.commit()
             new_balance = user.jennies
 
         embed = discord.Embed(title="🎰 Slots", color=discord.Color.gold())
-        embed.add_field(name="Reels",   value=display,                     inline=False)
-        embed.add_field(name="Result",  value=result_text,                 inline=False)
-        embed.add_field(name="Balance", value=f"**{new_balance} Jennies**", inline=False)
+        embed.add_field(name="Reels",   value=display,                       inline=False)
+        embed.add_field(name="Result",  value=result_text,                   inline=False)
+        embed.add_field(name="Balance", value=f"**{new_balance:,} Jennies**", inline=False)
 
         await interaction.response.send_message(embed=embed)

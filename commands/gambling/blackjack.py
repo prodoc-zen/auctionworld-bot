@@ -5,10 +5,7 @@ from sqlalchemy import select
 from database.models import User
 
 name        = "blackjack"
-description = "Play blackjack (min 10, max 1000 Jennies)"
-
-MIN_BET = 10
-MAX_BET = 1000
+description = "Play blackjack"
 
 SUITS = ["♠", "♥", "♦", "♣"]
 RANKS = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"]
@@ -51,9 +48,9 @@ def build_embed(player, dealer, bet, balance, hide_dealer=True, result_text=None
     embed.add_field(name="Dealer's Hand", value=hand_str(dealer, hide_second=hide_dealer) + (f" — **{hand_value(dealer)}**" if not hide_dealer else ""), inline=False)
     if result_text:
         embed.add_field(name="Result",  value=result_text, inline=False)
-    bet_label = f"**{bet} Jennies**" + (" (doubled)" if doubled else "")
-    embed.add_field(name="Bet",     value=bet_label,                inline=True)
-    embed.add_field(name="Balance", value=f"**{balance} Jennies**", inline=True)
+    bet_label = f"**{bet:,} Jennies**" + (" (doubled)" if doubled else "")
+    embed.add_field(name="Bet",     value=bet_label,                    inline=True)
+    embed.add_field(name="Balance", value=f"**{balance:,} Jennies**",   inline=True)
     return embed
 
 
@@ -63,8 +60,8 @@ class BlackjackView(discord.ui.View):
         self.player       = player
         self.dealer       = dealer
         self.deck         = deck
-        self.original_bet = original_bet  # what was deducted upfront
-        self.current_bet  = original_bet  # tracks doubled amount
+        self.original_bet = original_bet
+        self.current_bet  = original_bet
         self.discord_id   = discord_id
         self.database     = database
         self.doubled      = False
@@ -74,16 +71,14 @@ class BlackjackView(discord.ui.View):
 
     async def get_balance(self):
         async with self.database.session() as session:
-            result  = await session.execute(select(User).where(User.discord_id == self.discord_id))
-            user    = result.scalar_one_or_none()
+            result = await session.execute(select(User).where(User.discord_id == self.discord_id))
+            user   = result.scalar_one_or_none()
             return user.jennies if user else 0
 
     async def end_game(self, interaction, result_text, net):
-        """net = amount to add to balance (negative = loss already deducted)"""
         async with self.database.session() as session:
             result = await session.execute(select(User).where(User.discord_id == self.discord_id))
             user   = result.scalar_one_or_none()
-            # Always return the original bet first, then add winnings
             user.jennies += self.original_bet + net
             await session.commit()
             balance = user.jennies
@@ -102,7 +97,6 @@ class BlackjackView(discord.ui.View):
             await interaction.response.send_message("This isn't your game!", ephemeral=True)
             return
 
-        # Remove double down after first hit
         for item in self.children:
             if hasattr(item, 'label') and item.label == "Double Down":
                 item.disabled = True
@@ -111,7 +105,7 @@ class BlackjackView(discord.ui.View):
         val = hand_value(self.player)
 
         if val > 21:
-            await self.end_game(interaction, f"💥 **Bust!** You lose **{self.current_bet} Jennies**.", -self.current_bet)
+            await self.end_game(interaction, f"💥 **Bust!** You lose **{self.current_bet:,} Jennies**.", -self.current_bet)
         elif val == 21:
             await self.stand_logic(interaction)
         else:
@@ -132,18 +126,13 @@ class BlackjackView(discord.ui.View):
             await interaction.response.send_message("This isn't your game!", ephemeral=True)
             return
 
-        # Deduct only the extra bet (original already deducted)
         async with self.database.session() as session:
             result = await session.execute(select(User).where(User.discord_id == self.discord_id))
             user   = result.scalar_one_or_none()
-
             if user.jennies < self.original_bet:
-                await interaction.response.send_message(
-                    "You don't have enough Jennies to double down.", ephemeral=True,
-                )
+                await interaction.response.send_message("Not enough Jennies to double down.", ephemeral=True)
                 return
-
-            user.jennies     -= self.original_bet
+            user.jennies -= self.original_bet
             await session.commit()
 
         self.current_bet = self.original_bet * 2
@@ -152,7 +141,7 @@ class BlackjackView(discord.ui.View):
         val = hand_value(self.player)
 
         if val > 21:
-            await self.end_game(interaction, f"💥 **Bust after double down!** You lose **{self.current_bet} Jennies**.", -self.current_bet)
+            await self.end_game(interaction, f"💥 **Bust after double down!** You lose **{self.current_bet:,} Jennies**.", -self.current_bet)
         else:
             await self.stand_logic(interaction)
 
@@ -164,11 +153,11 @@ class BlackjackView(discord.ui.View):
         dealer_val = hand_value(self.dealer)
 
         if dealer_val > 21 or player_val > dealer_val:
-            await self.end_game(interaction, f"✅ **You win {self.current_bet} Jennies!**", self.current_bet)
+            await self.end_game(interaction, f"✅ **You win {self.current_bet:,} Jennies!**", self.current_bet)
         elif player_val == dealer_val:
             await self.end_game(interaction, "🤝 **Push!** Your bet is returned.", 0)
         else:
-            await self.end_game(interaction, f"❌ **Dealer wins.** You lose **{self.current_bet} Jennies**.", -self.current_bet)
+            await self.end_game(interaction, f"❌ **Dealer wins.** You lose **{self.current_bet:,} Jennies**.", -self.current_bet)
 
     async def on_timeout(self):
         for item in self.children:
@@ -177,12 +166,10 @@ class BlackjackView(discord.ui.View):
 
 def register(tree, database):
     @tree.command(name=name, description=description)
-    @app_commands.describe(bet="Amount of Jennies to bet (10–1000)")
+    @app_commands.describe(bet="Amount of Jennies to bet")
     async def blackjack(interaction, bet: int):
-        if bet < MIN_BET or bet > MAX_BET:
-            await interaction.response.send_message(
-                f"Bet must be between {MIN_BET} and {MAX_BET} Jennies.", ephemeral=True,
-            )
+        if bet < 1:
+            await interaction.response.send_message("Bet must be at least 1 Jennie.", ephemeral=True)
             return
 
         async with database.session() as session:
@@ -195,7 +182,7 @@ def register(tree, database):
 
             if user.jennies < bet:
                 await interaction.response.send_message(
-                    f"You only have **{user.jennies} Jennies**.", ephemeral=True,
+                    f"You only have **{user.jennies:,} Jennies**.", ephemeral=True,
                 )
                 return
 
@@ -216,9 +203,8 @@ def register(tree, database):
                 user.jennies += bet + winnings
                 await session.commit()
                 balance = user.jennies
-
             embed = build_embed(player, dealer, bet, balance, hide_dealer=False,
-                                result_text=f"🎉 **Blackjack!** You win **{winnings} Jennies**!")
+                                result_text=f"🎉 **Blackjack!** You win **{winnings:,} Jennies**!")
             await interaction.response.send_message(embed=embed)
             return
 

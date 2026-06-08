@@ -5,10 +5,7 @@ from sqlalchemy import select
 from database.models import User
 
 name        = "roulette"
-description = "Play European roulette (min 10, max 1000 Jennies)"
-
-MIN_BET = 10
-MAX_BET = 1000
+description = "Play European roulette"
 
 RED_NUMBERS   = {1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36}
 BLACK_NUMBERS = {2,4,6,8,10,11,13,15,17,20,22,24,26,28,29,31,33,35}
@@ -26,56 +23,38 @@ BET_TYPES = [
 ]
 
 
-def check_win(bet_type: str, number: int) -> tuple[bool, int]:
-    """Returns (won, multiplier)."""
+def check_win(bet_type, number):
     if number == 0:
         return False, 0
-
-    if bet_type == "red":
-        return number in RED_NUMBERS, 2
-    if bet_type == "black":
-        return number in BLACK_NUMBERS, 2
-    if bet_type == "odd":
-        return number % 2 == 1, 2
-    if bet_type == "even":
-        return number % 2 == 0, 2
-    if bet_type == "low":
-        return 1 <= number <= 18, 2
-    if bet_type == "high":
-        return 19 <= number <= 36, 2
-    if bet_type == "first12":
-        return 1 <= number <= 12, 3
-    if bet_type == "second12":
-        return 13 <= number <= 24, 3
-    if bet_type == "third12":
-        return 25 <= number <= 36, 3
+    if bet_type == "red":    return number in RED_NUMBERS, 2
+    if bet_type == "black":  return number in BLACK_NUMBERS, 2
+    if bet_type == "odd":    return number % 2 == 1, 2
+    if bet_type == "even":   return number % 2 == 0, 2
+    if bet_type == "low":    return 1 <= number <= 18, 2
+    if bet_type == "high":   return 19 <= number <= 36, 2
+    if bet_type == "first12":  return 1 <= number <= 12, 3
+    if bet_type == "second12": return 13 <= number <= 24, 3
+    if bet_type == "third12":  return 25 <= number <= 36, 3
     return False, 0
 
 
-def number_color(number: int) -> str:
-    if number == 0:
-        return "🟢"
+def number_color(number):
+    if number == 0: return "🟢"
     return "🔴" if number in RED_NUMBERS else "⚫"
 
 
 def register(tree, database):
     @tree.command(name=name, description=description)
-    @app_commands.describe(
-        bet="Amount of Jennies to bet (10–1000)",
-        bet_type="What to bet on",
-    )
+    @app_commands.describe(bet="Amount of Jennies to bet", bet_type="What to bet on")
     @app_commands.choices(bet_type=BET_TYPES)
     async def roulette(interaction, bet: int, bet_type: app_commands.Choice[str]):
-        if bet < MIN_BET or bet > MAX_BET:
-            await interaction.response.send_message(
-                f"Bet must be between {MIN_BET} and {MAX_BET} Jennies.", ephemeral=True,
-            )
+        if bet < 1:
+            await interaction.response.send_message("Bet must be at least 1 Jennie.", ephemeral=True)
             return
 
         async with database.session() as session:
             result = await session.execute(select(User).where(User.discord_id == interaction.user.id))
             user   = result.scalar_one_or_none()
-
             if user is None:
                 user = User(discord_id=interaction.user.id, jennies=2000)
                 session.add(user)
@@ -83,29 +62,29 @@ def register(tree, database):
 
             if user.jennies < bet:
                 await interaction.response.send_message(
-                    f"You only have **{user.jennies} Jennies**.", ephemeral=True,
+                    f"You only have **{user.jennies:,} Jennies**.", ephemeral=True,
                 )
                 return
 
-            number       = random.randint(0, 36)
-            won, mult    = check_win(bet_type.value, number)
-            color_emoji  = number_color(number)
+            number      = random.randint(0, 36)
+            won, mult   = check_win(bet_type.value, number)
+            color_emoji = number_color(number)
 
             if won:
                 winnings     = bet * mult
                 user.jennies += winnings - bet
-                result_text  = f"✅ **You win {winnings} Jennies!** ({mult}x)"
+                result_text  = f"✅ **You win {winnings:,} Jennies!** ({mult}x)"
             else:
                 user.jennies -= bet
-                result_text   = f"❌ You lose **{bet} Jennies**."
+                result_text   = f"❌ You lose **{bet:,} Jennies**."
 
             await session.commit()
             new_balance = user.jennies
 
         embed = discord.Embed(title="🎡 Roulette", color=discord.Color.red())
-        embed.add_field(name="Ball Lands On", value=f"{color_emoji} **{number}**",  inline=False)
-        embed.add_field(name="Your Bet",      value=bet_type.name,                  inline=False)
-        embed.add_field(name="Result",        value=result_text,                    inline=False)
-        embed.add_field(name="Balance",       value=f"**{new_balance} Jennies**",   inline=False)
+        embed.add_field(name="Ball Lands On", value=f"{color_emoji} **{number}**",      inline=False)
+        embed.add_field(name="Your Bet",      value=bet_type.name,                      inline=False)
+        embed.add_field(name="Result",        value=result_text,                        inline=False)
+        embed.add_field(name="Balance",       value=f"**{new_balance:,} Jennies**",     inline=False)
 
         await interaction.response.send_message(embed=embed)

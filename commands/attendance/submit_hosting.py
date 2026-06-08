@@ -6,7 +6,7 @@ from discord import app_commands
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
-from database.models import AdminProfile, AttendanceRecord, Transaction, User, format_earnings, utc_now
+from database.models import AdminUser, AttendanceRecord, Transaction, User, format_earnings, utc_now
 
 name        = "submithosting"
 description = "Submit a hosting session log"
@@ -120,52 +120,32 @@ def register(tree, database):
             await interaction.response.send_message("Time-out must be after time-in.", ephemeral=True)
             return
 
-        total_seconds = (time_out_dt - time_in_dt).total_seconds()
-        total_minutes = int(total_seconds // 60)
+        total_seconds  = (time_out_dt - time_in_dt).total_seconds()
+        total_minutes  = int(total_seconds // 60)
         jennies_earned = total_minutes * JENNIES_PER_MINUTE
         duration_text  = format_duration(total_seconds)
         earnings_text  = format_earnings(bgls, dls, wls)
 
         async with database.session() as session:
+            # Ensure user exists
             if await session.get(User, discord_id) is None:
                 session.add(User(discord_id=discord_id, jennies=2000))
                 await session.flush()
 
-            existing_record_result = await session.execute(
-                select(AttendanceRecord).where(
-                    AttendanceRecord.discord_id == discord_id,
-                    AttendanceRecord.time_in_at == time_in_dt,
-                    AttendanceRecord.time_out_at == time_out_dt,
-                )
-            )
-            existing_record = existing_record_result.scalar_one_or_none()
-            if existing_record is not None:
-                await interaction.response.send_message(
-                    f"This exact session already exists in attendance records (ID: {existing_record.id}).",
-                    ephemeral=True,
-                )
-                return
+            # Ensure admin_user exists for weeklyhours tracking
+            if await session.get(AdminUser, discord_id) is None:
+                session.add(AdminUser(discord_id=discord_id, is_active=True))
+                await session.flush()
 
-            admin_result = await session.execute(
-                select(AdminProfile).where(AdminProfile.discord_id == discord_id)
-            )
-            admin_profile = admin_result.scalar_one_or_none()
-            if admin_profile is None and member is None:
-                await interaction.response.send_message(
-                    "You need an admin profile before submitting hosting records.",
-                    ephemeral=True,
-                )
-                return
-
-            # Add jennies for hosting
+            # Add jennies
             user = await session.get(User, discord_id)
             user.jennies += jennies_earned
-            reason = (
-                f"hosting:{int(time_in_dt.timestamp())}:{int(time_out_dt.timestamp())}:"
-                f"{discord_id}:{uuid4().hex[:8]}"
-            )
+
+            # Unique reason using UUID to prevent duplicate key errors
+            reason = f"hosting:{int(time_in_dt.timestamp())}:{discord_id}:{uuid4().hex[:8]}"
             session.add(Transaction(discord_id=discord_id, amount=jennies_earned, reason=reason))
 
+            # Save attendance record
             record = AttendanceRecord(
                 discord_id=discord_id,
                 time_in_at=time_in_dt,
@@ -177,38 +157,53 @@ def register(tree, database):
             session.add(record)
             await session.flush()
             hosting_id = record.id
+
             try:
                 await session.commit()
             except IntegrityError:
                 await session.rollback()
                 await interaction.response.send_message(
-                    "This hosting submission already exists. Please change the time range slightly and try again.",
+                    "Submission failed due to a duplicate entry. Please try again.",
                     ephemeral=True,
                 )
                 return
 
+        # Build main embed
         embed = discord.Embed(title="Hosting Session", color=discord.Color.green())
-        embed.add_field(name="Hosting ID",   value=str(hosting_id),                          inline=False)
-        embed.add_field(name="Discord",      value=target.mention,                            inline=False)
-        embed.add_field(name="Earnings",     value=earnings_text,                             inline=False)
-        embed.add_field(name="Time Worked",  value=duration_text,                             inline=False)
-        embed.add_field(name="Jennies Earned", value=f"+{jennies_earned} Jennies ({total_minutes} min × {JENNIES_PER_MINUTE})", inline=False)
-        embed.add_field(name="Date",         value=time_in_dt.strftime("%d %b %Y %H:%M UTC"), inline=False)
-        embed.set_image(url=all_attachments[0].url)
+        embed.add_field(name="Hosting ID",    value=str(hosting_id),                          inline=True)
+        embed.add_field(name="Discord",       value=target.mention,                            inline=True)
+        embed.add_field(name="Date",          value=time_in_dt.strftime("%d %b %Y %H:%M UTC"), inline=True)
+        embed.add_field(name="Earnings",      value=earnings_text,                             inline=True)
+        embed.add_field(name="Time Worked",   value=duration_text,                             inline=True)
+        embed.add_field(name="Jennies Earned",value=f"+{jennies_earned} ({total_minutes}m × {JENNIES_PER_MINUTE})", inline=True)
 
+        # Send screenshots as a grid — up to 4 embeds per message (Discord limit)
         channel = interaction.client.get_channel(HOSTING_SESSIONS_CHANNEL_ID)
         if channel is None:
             channel = await interaction.client.fetch_channel(HOSTING_SESSIONS_CHANNEL_ID)
 
-        await channel.send(embed=embed)
+        # First message: main info embed + first screenshot
+        embed.set_image(url=all_attachments[0].url)
+        screenshot_embeds = [embed]
 
-        if len(all_attachments) > 1:
-            extra_embeds = []
-            for attachment in all_attachments[1:]:
-                extra_embed = discord.Embed(color=discord.Color.green())
-                extra_embed.set_image(url=attachment.url)
-                extra_embeds.append(extra_embed)
-            await channel.send(embeds=extra_embeds)
+        # Add remaining screenshots as additional embeds in the same message (up to 4 total)
+        for attachment in all_attachments[1:3]:
+            e = discord.Embed(color=discord.Color.green())
+            e.set_image(url=attachment.url)
+            screenshot_embeds.append(e)
+
+        await channel.send(embeds=screenshot_embeds)
+
+        # If more than 3 extra screenshots, send in batches of 4
+        remaining = all_attachments[3:]
+        for i in range(0, len(remaining), 4):
+            batch = remaining[i:i+4]
+            batch_embeds = []
+            for attachment in batch:
+                e = discord.Embed(color=discord.Color.green())
+                e.set_image(url=attachment.url)
+                batch_embeds.append(e)
+            await channel.send(embeds=batch_embeds)
 
         await interaction.response.send_message(
             f"✅ Submitted! You earned **{jennies_earned} Jennies** for {duration_text} of hosting. Check <#{HOSTING_SESSIONS_CHANNEL_ID}>.",
