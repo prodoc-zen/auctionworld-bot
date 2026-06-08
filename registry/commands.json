@@ -488,5 +488,15 @@
       "role_ids": [],
       "groups": []
     }
+  },
+  "reme": {
+    "file": "commands/gambling/reme.py",
+    "description": "gamble with Reme",
+    "usage": "/reme",
+    "access": {
+      "user_ids": [],
+      "role_ids": [],
+      "groups": []
+    }
   }
 }
