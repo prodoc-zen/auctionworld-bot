@@ -406,5 +406,41 @@
         "moderators"
       ]
     }
+  },
+  "view-megaphone": {
+    "file": "commands/megaphone/view_megaphone.py",
+    "description": "View pending megaphone submissions",
+    "usage": "/view-megaphone",
+    "access": {
+      "user_ids": [],
+      "role_ids": [],
+      "groups": [
+        "moderators"
+      ]
+    }
+  },
+  "give-jennies": {
+    "file": "commands/economy/give_jennies.py",
+    "description": "Give Jennies to a user",
+    "usage": "/give-jennies member: amount: [reason:]",
+    "access": {
+      "user_ids": [],
+      "role_ids": [],
+      "groups": [
+        "admins"
+      ]
+    }
+  },
+  "take-jennies": {
+    "file": "commands/economy/take_jennies.py",
+    "description": "Take Jennies from a user",
+    "usage": "/take-jennies member: amount: [reason:]",
+    "access": {
+      "user_ids": [],
+      "role_ids": [],
+      "groups": [
+        "admins"
+      ]
+    }
   }
 }

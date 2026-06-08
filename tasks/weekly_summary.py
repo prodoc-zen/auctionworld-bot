@@ -128,6 +128,10 @@ async def send_weekly_summary(client, database):
     if channel is None:
         channel = await client.fetch_channel(SUMMARY_CHANNEL_ID)
 
+    if not records:
+        client.logger.info("No hosting data this week, skipping weekly summary.")
+        return
+
     await channel.send("\n".join(lines))
 
 

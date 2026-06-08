@@ -47,24 +47,33 @@ def is_soft_17(hand):
 
 def build_embed(player, dealer, bet, balance, hide_dealer=True, result_text=None):
     embed = discord.Embed(title="🃏 Blackjack", color=discord.Color.dark_green())
-    embed.add_field(name="Your Hand",     value=f"{hand_str(player)} — **{hand_value(player)}**",                               inline=False)
+    embed.add_field(name="Your Hand",     value=f"{hand_str(player)} — **{hand_value(player)}**", inline=False)
     embed.add_field(name="Dealer's Hand", value=hand_str(dealer, hide_second=hide_dealer) + (f" — **{hand_value(dealer)}**" if not hide_dealer else ""), inline=False)
     if result_text:
-        embed.add_field(name="Result",  value=result_text,           inline=False)
-    embed.add_field(name="Bet",         value=f"**{bet} Jennies**",  inline=True)
+        embed.add_field(name="Result",  value=result_text,              inline=False)
+    embed.add_field(name="Bet",         value=f"**{bet} Jennies**",     inline=True)
     embed.add_field(name="Balance",     value=f"**{balance} Jennies**", inline=True)
     return embed
 
 
 class BlackjackView(discord.ui.View):
-    def __init__(self, player, dealer, deck, bet, discord_id, database):
+    def __init__(self, player, dealer, deck, bet, discord_id, database, can_double):
         super().__init__(timeout=60)
-        self.player    = player
-        self.dealer    = dealer
-        self.deck      = deck
-        self.bet       = bet
+        self.player     = player
+        self.dealer     = dealer
+        self.deck       = deck
+        self.bet        = bet
         self.discord_id = discord_id
-        self.database  = database
+        self.database   = database
+
+        if not can_double:
+            self.remove_item(self.double_down)
+
+    async def get_balance(self):
+        async with self.database.session() as session:
+            result = await session.execute(select(User).where(User.discord_id == self.discord_id))
+            user   = result.scalar_one_or_none()
+            return user.jennies if user else 0
 
     async def end_game(self, interaction, result_text, winnings):
         async with self.database.session() as session:
@@ -87,6 +96,9 @@ class BlackjackView(discord.ui.View):
             await interaction.response.send_message("This isn't your game!", ephemeral=True)
             return
 
+        # Remove double down after first hit
+        self.remove_item(self.double_down) if hasattr(self, 'double_down') else None
+
         self.player.append(self.deck.pop())
         val = hand_value(self.player)
 
@@ -95,12 +107,8 @@ class BlackjackView(discord.ui.View):
         elif val == 21:
             await self.stand_logic(interaction)
         else:
-            async with self.database.session() as session:
-                result  = await session.execute(select(User).where(User.discord_id == self.discord_id))
-                user    = result.scalar_one_or_none()
-                balance = user.jennies
-
-            embed = build_embed(self.player, self.dealer, self.bet, balance)
+            balance = await self.get_balance()
+            embed   = build_embed(self.player, self.dealer, self.bet, balance)
             await interaction.response.edit_message(embed=embed, view=self)
 
     @discord.ui.button(label="Stand", style=discord.ButtonStyle.secondary)
@@ -109,6 +117,35 @@ class BlackjackView(discord.ui.View):
             await interaction.response.send_message("This isn't your game!", ephemeral=True)
             return
         await self.stand_logic(interaction)
+
+    @discord.ui.button(label="Double Down", style=discord.ButtonStyle.danger)
+    async def double_down(self, interaction, button):
+        if interaction.user.id != self.discord_id:
+            await interaction.response.send_message("This isn't your game!", ephemeral=True)
+            return
+
+        # Deduct extra bet
+        async with self.database.session() as session:
+            result = await session.execute(select(User).where(User.discord_id == self.discord_id))
+            user   = result.scalar_one_or_none()
+
+            if user.jennies < self.bet:
+                await interaction.response.send_message(
+                    f"You don't have enough Jennies to double down.", ephemeral=True,
+                )
+                return
+
+            user.jennies -= self.bet
+            await session.commit()
+
+        self.bet *= 2
+        self.player.append(self.deck.pop())
+        val = hand_value(self.player)
+
+        if val > 21:
+            await self.end_game(interaction, f"💥 **Bust after double down!** You lose **{self.bet} Jennies**.", -self.bet)
+        else:
+            await self.stand_logic(interaction)
 
     async def stand_logic(self, interaction):
         while hand_value(self.dealer) < 17 or is_soft_17(self.dealer):
@@ -153,6 +190,7 @@ def register(tree, database):
                 )
                 return
 
+            can_double  = user.jennies >= bet * 2
             user.jennies -= bet
             await session.commit()
             balance = user.jennies
@@ -161,7 +199,6 @@ def register(tree, database):
         player = [deck.pop(), deck.pop()]
         dealer = [deck.pop(), deck.pop()]
 
-        # Check for natural blackjack
         if hand_value(player) == 21:
             winnings = int(bet * 1.5)
             async with database.session() as session:
@@ -176,6 +213,6 @@ def register(tree, database):
             await interaction.response.send_message(embed=embed)
             return
 
-        view  = BlackjackView(player, dealer, deck, bet, interaction.user.id, database)
+        view  = BlackjackView(player, dealer, deck, bet, interaction.user.id, database, can_double)
         embed = build_embed(player, dealer, bet, balance)
         await interaction.response.send_message(embed=embed, view=view)

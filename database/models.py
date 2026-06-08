@@ -192,3 +192,12 @@ class MegaphoneSubmission(Base):
     verified_by: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now, onupdate=utc_now)
+
+
+class GachaPity(Base):
+    __tablename__ = "gacha_pity"
+
+    discord_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    pulls_since_4star: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
+    pulls_since_3star: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now, onupdate=utc_now)
