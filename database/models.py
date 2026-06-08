@@ -158,3 +158,25 @@ class Blacklist(Base):
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now, onupdate=utc_now)
+
+
+class GachaCard(Base):
+    __tablename__ = "gacha_cards"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    discord_id: Mapped[int] = mapped_column(BigInteger, nullable=False, index=True)
+    character_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    rarity: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    level: Mapped[int] = mapped_column(BigInteger, nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now)
+
+
+class GachaShowcase(Base):
+    __tablename__ = "gacha_showcase"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    discord_id: Mapped[int] = mapped_column(BigInteger, nullable=False, index=True)
+    slot: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    card_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("gacha_cards.id", ondelete="CASCADE"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now, onupdate=utc_now)

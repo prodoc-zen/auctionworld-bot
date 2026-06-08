@@ -3,12 +3,13 @@ from datetime import datetime, timezone
 import discord
 from discord import app_commands
 
-from database.models import AdminUser, AttendanceRecord, User, format_earnings, utc_now
+from database.models import AdminUser, AttendanceRecord, Transaction, User, format_earnings, utc_now
 
 name        = "submithosting"
 description = "Submit a hosting session log"
 
 HOSTING_SESSIONS_CHANNEL_ID = 1447015434959327292
+JENNIES_PER_MINUTE          = 8
 
 
 def parse_time(time_str: str) -> datetime | None:
@@ -91,8 +92,7 @@ def register(tree, database):
         non_images = [a.filename for a in all_attachments if not is_image(a)]
         if non_images:
             await interaction.response.send_message(
-                f"These files are not images: {', '.join(non_images)}.",
-                ephemeral=True,
+                f"These files are not images: {', '.join(non_images)}.", ephemeral=True,
             )
             return
 
@@ -114,22 +114,29 @@ def register(tree, database):
             return
 
         if time_out_dt <= time_in_dt:
-            await interaction.response.send_message(
-                "Time-out must be after time-in.", ephemeral=True,
-            )
+            await interaction.response.send_message("Time-out must be after time-in.", ephemeral=True)
             return
 
-        duration_text = format_duration((time_out_dt - time_in_dt).total_seconds())
-        earnings_text = format_earnings(bgls, dls, wls)
+        total_seconds = (time_out_dt - time_in_dt).total_seconds()
+        total_minutes = int(total_seconds // 60)
+        jennies_earned = total_minutes * JENNIES_PER_MINUTE
+        duration_text  = format_duration(total_seconds)
+        earnings_text  = format_earnings(bgls, dls, wls)
 
         async with database.session() as session:
             if await session.get(User, discord_id) is None:
-                session.add(User(discord_id=discord_id, jennies=0))
+                session.add(User(discord_id=discord_id, jennies=2000))
                 await session.flush()
 
             if await session.get(AdminUser, discord_id) is None:
                 session.add(AdminUser(discord_id=discord_id, is_active=True))
                 await session.flush()
+
+            # Add jennies for hosting
+            user = await session.get(User, discord_id)
+            user.jennies += jennies_earned
+            reason = f"hosting:{int(time_in_dt.timestamp())}"
+            session.add(Transaction(discord_id=discord_id, amount=jennies_earned, reason=reason))
 
             record = AttendanceRecord(
                 discord_id=discord_id,
@@ -145,11 +152,12 @@ def register(tree, database):
             await session.commit()
 
         embed = discord.Embed(title="Hosting Session", color=discord.Color.green())
-        embed.add_field(name="Hosting ID",  value=str(hosting_id),                          inline=False)
-        embed.add_field(name="Discord",     value=target.mention,                            inline=False)
-        embed.add_field(name="Earnings",    value=earnings_text,                             inline=False)
-        embed.add_field(name="Time Worked", value=duration_text,                             inline=False)
-        embed.add_field(name="Date",        value=time_in_dt.strftime("%d %b %Y %H:%M UTC"), inline=False)
+        embed.add_field(name="Hosting ID",   value=str(hosting_id),                          inline=False)
+        embed.add_field(name="Discord",      value=target.mention,                            inline=False)
+        embed.add_field(name="Earnings",     value=earnings_text,                             inline=False)
+        embed.add_field(name="Time Worked",  value=duration_text,                             inline=False)
+        embed.add_field(name="Jennies Earned", value=f"+{jennies_earned} Jennies ({total_minutes} min × {JENNIES_PER_MINUTE})", inline=False)
+        embed.add_field(name="Date",         value=time_in_dt.strftime("%d %b %Y %H:%M UTC"), inline=False)
         embed.set_image(url=all_attachments[0].url)
 
         channel = interaction.client.get_channel(HOSTING_SESSIONS_CHANNEL_ID)
@@ -167,6 +175,6 @@ def register(tree, database):
             await channel.send(embeds=extra_embeds)
 
         await interaction.response.send_message(
-            f"✅ Hosting session submitted! Check <#{HOSTING_SESSIONS_CHANNEL_ID}>.",
+            f"✅ Submitted! You earned **{jennies_earned} Jennies** for {duration_text} of hosting. Check <#{HOSTING_SESSIONS_CHANNEL_ID}>.",
             ephemeral=True,
         )

@@ -272,5 +272,85 @@
         "moderators"
       ]
     }
+  },
+  "blackjack": {
+    "file": "commands/gambling/blackjack.py",
+    "description": "Play blackjack",
+    "usage": "/blackjack bet:",
+    "access": {
+      "user_ids": [],
+      "role_ids": [],
+      "groups": []
+    }
+  },
+  "slots": {
+    "file": "commands/gambling/slots.py",
+    "description": "Play the slot machine",
+    "usage": "/slots bet:",
+    "access": {
+      "user_ids": [],
+      "role_ids": [],
+      "groups": []
+    }
+  },
+  "roulette": {
+    "file": "commands/gambling/roulette.py",
+    "description": "Play European roulette",
+    "usage": "/roulette bet: bet_type:",
+    "access": {
+      "user_ids": [],
+      "role_ids": [],
+      "groups": []
+    }
+  },
+  "gacha-single": {
+    "file": "commands/gacha/gacha_single.py",
+    "description": "Pull 1 gacha character",
+    "usage": "/gacha-single",
+    "access": {
+      "user_ids": [],
+      "role_ids": [],
+      "groups": []
+    }
+  },
+  "gacha-multi": {
+    "file": "commands/gacha/gacha_multi.py",
+    "description": "Pull 10 gacha characters",
+    "usage": "/gacha-multi",
+    "access": {
+      "user_ids": [],
+      "role_ids": [],
+      "groups": []
+    }
+  },
+  "gacha-characters": {
+    "file": "commands/gacha/gacha_characters.py",
+    "description": "View your gacha collection",
+    "usage": "/gacha-characters",
+    "access": {
+      "user_ids": [],
+      "role_ids": [],
+      "groups": []
+    }
+  },
+  "gacha-view": {
+    "file": "commands/gacha/gacha_view.py",
+    "description": "View a specific character you own",
+    "usage": "/gacha-view character_name:",
+    "access": {
+      "user_ids": [],
+      "role_ids": [],
+      "groups": []
+    }
+  },
+  "gacha-showcase": {
+    "file": "commands/gacha/gacha_showcase.py",
+    "description": "Choose characters to showcase on your profile",
+    "usage": "/gacha-showcase slot: character_name:",
+    "access": {
+      "user_ids": [],
+      "role_ids": [],
+      "groups": []
+    }
   }
 }

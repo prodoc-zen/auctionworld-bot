@@ -4,7 +4,8 @@ import discord
 from discord import app_commands
 from sqlalchemy import select
 
-from database.models import AdminProfile, AttendanceRecord, User, format_earnings, from_wls, to_wls, utc_now
+from commands.gacha._gacha_utils import STAR_EMOJIS
+from database.models import AdminProfile, AttendanceRecord, GachaCard, GachaShowcase, User, format_earnings, from_wls, to_wls, utc_now
 
 name        = "profile"
 description = "View an admin's profile"
@@ -40,12 +41,24 @@ def register(tree, database):
 
             user = await session.get(User, discord_id)
 
-            result = await session.execute(
+            records_result = await session.execute(
                 select(AttendanceRecord).where(AttendanceRecord.discord_id == discord_id)
             )
-            records = result.scalars().all()
+            records = records_result.scalars().all()
 
-        # Time worked
+            # Gacha showcase
+            showcase_result = await session.execute(
+                select(GachaShowcase).where(GachaShowcase.discord_id == discord_id).order_by(GachaShowcase.slot)
+            )
+            showcases = showcase_result.scalars().all()
+
+            showcase_cards = []
+            for s in showcases:
+                if s.card_id:
+                    card = await session.get(GachaCard, s.card_id)
+                    if card:
+                        showcase_cards.append(card)
+
         weekly_secs = 0
         total_secs  = 0
         weekly_wls  = 0
@@ -56,7 +69,6 @@ def register(tree, database):
             duration    = max(0, (session_end - record.time_in_at).total_seconds())
             total_secs += duration
             total_wls  += to_wls(record.bgls, record.dls, record.wls)
-
             if record.time_in_at >= start:
                 weekly_secs += duration
                 weekly_wls  += to_wls(record.bgls, record.dls, record.wls)
@@ -64,10 +76,7 @@ def register(tree, database):
         weekly_earn = format_earnings(*from_wls(weekly_wls))
         total_earn  = format_earnings(*from_wls(total_wls))
 
-        embed = discord.Embed(
-            title=f"Admin Profile  {admin_profile.id}",
-            color=discord.Color.blurple(),
-        )
+        embed = discord.Embed(title=f"Admin Profile  {admin_profile.id}", color=discord.Color.blurple())
         embed.set_thumbnail(url=target.display_avatar.url)
         embed.add_field(name="💬 Discord",          value=target.mention,                            inline=True)
         embed.add_field(name="🌿 GT Name",          value=admin_profile.gt_name,                    inline=True)
@@ -84,5 +93,12 @@ def register(tree, database):
             value=f"Weekly: {weekly_earn}\nTotal: {total_earn}",
             inline=False,
         )
+
+        if showcase_cards:
+            showcase_text = "\n".join(
+                f"{STAR_EMOJIS[c.rarity]} **{c.character_name}** Lv.{c.level}"
+                for c in showcase_cards
+            )
+            embed.add_field(name="✨ Gacha Showcase", value=showcase_text, inline=False)
 
         await interaction.response.send_message(embed=embed)

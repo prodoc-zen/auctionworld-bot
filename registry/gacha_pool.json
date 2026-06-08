@@ -1,0 +1,29 @@
+{
+  "1": {
+    "rate": 78.0,
+    "characters": [
+      "Diamond Mannequin", "Holographic Mannequin", "LOL Mannequin",
+      "Mannequin", "OMG Mannequin", "Pearl Mannequin", "Sad Mannequin",
+      "Sandtopian", "Shiny Mannequin", "Snowtopian", "Troll Mannequin"
+    ]
+  },
+  "2": {
+    "rate": 18.5,
+    "characters": [
+      "Alpha", "Bruno", "Chungus", "DJ Salad", "Kermit",
+      "McChicken", "Ninja", "Pro", "Ronald", "Snoopy", "Tralala"
+    ]
+  },
+  "3": {
+    "rate": 3.0,
+    "characters": [
+      "Chaos", "hahs", "Jinbong", "Koiwai", "Pixel", "Ur7MoD"
+    ]
+  },
+  "4": {
+    "rate": 0.5,
+    "characters": [
+      "Molecule", "Pipep", "Royanne", "Scorpiiu"
+    ]
+  }
+}
