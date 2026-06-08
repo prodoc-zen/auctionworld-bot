@@ -394,5 +394,17 @@
       "role_ids": [],
       "groups": []
     }
+  },
+  "verify-megaphone": {
+    "file": "commands/megaphone/verify_megaphone.py",
+    "description": "Verify a megaphone donation submission",
+    "usage": "/verify-megaphone submission_id:",
+    "access": {
+      "user_ids": [],
+      "role_ids": [],
+      "groups": [
+        "moderators"
+      ]
+    }
   }
 }
