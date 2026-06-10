@@ -6,7 +6,7 @@ from discord import app_commands
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
-from database.models import AdminUser, AttendanceRecord, Transaction, User, format_earnings, utc_now
+from database.models import AttendanceRecord, Transaction, User, format_earnings, utc_now
 
 name        = "submithosting"
 description = "Submit a hosting session log"
@@ -130,11 +130,6 @@ def register(tree, database):
             # Ensure user exists
             if await session.get(User, discord_id) is None:
                 session.add(User(discord_id=discord_id, jennies=2000))
-                await session.flush()
-
-            # Ensure admin_user exists for weeklyhours tracking
-            if await session.get(AdminUser, discord_id) is None:
-                session.add(AdminUser(discord_id=discord_id, is_active=True))
                 await session.flush()
 
             # Add jennies
