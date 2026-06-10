@@ -1,4 +1,4 @@
-from commands.hosting._queue_utils import HostingQueueView, build_queue_embed
+from commands.hosting._queue_utils import HostingQueueView, build_queue_embed, register_panel_message
 
 name        = "hosting"
 description = "Open the hosting queue panel"
@@ -12,3 +12,5 @@ def register(tree, database):
             embed=embed,
             view=HostingQueueView(database),
         )
+        message = await interaction.original_response()
+        register_panel_message(message.channel.id, message.id)

@@ -1,0 +1,45 @@
+{
+  "pull_cost": 120,
+  "max_level": 10,
+  "pity_4star": 90,
+  "pity_3star": 10,
+  "star_emojis": {
+    "1": "⭐",
+    "2": "⭐⭐",
+    "3": "⭐⭐⭐",
+    "4": "⭐⭐⭐⭐"
+  },
+  "rarity_colors": {
+    "1": 10395294,
+    "2": 5025616,
+    "3": 2196723,
+    "4": 16761095
+  },
+  "elements": [
+    "fire",
+    "water",
+    "earth",
+    "wind",
+    "light",
+    "dark"
+  ],
+  "default_character_stats": {
+    "health": 100,
+    "element": "fire",
+    "normal_attack": {
+      "name": "Basic Strike",
+      "damage": 12,
+      "cooldown": 0
+    },
+    "secondary_attack": {
+      "name": "Skill",
+      "damage": 24,
+      "cooldown": 2
+    },
+    "power_attack": {
+      "name": "Ultimate",
+      "damage": 40,
+      "cooldown": 4
+    }
+  }
+}

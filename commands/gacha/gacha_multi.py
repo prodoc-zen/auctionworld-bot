@@ -1,7 +1,7 @@
 import discord
 from sqlalchemy import select
 from database.models import GachaCard, GachaPity, User
-from commands.gacha._gacha_utils import pull_many, PULL_COST, STAR_EMOJIS, MAX_LEVEL, PITY_4STAR
+from commands.gacha._gacha_utils import pull_many, PULL_COST, STAR_EMOJIS, MAX_LEVEL, PITY_4STAR, get_character_image_for_session
 
 name        = "gacha-multi"
 description = "Pull 10 gacha characters (1200 Jennies)"
@@ -45,7 +45,7 @@ def register(tree, database):
             best_image = None
             best_rarity = 0
 
-            for character, rarity, image in pulls:
+            for character, rarity, _ in pulls:
                 stars = STAR_EMOJIS[rarity]
                 dup_result = await session.execute(
                     select(GachaCard).where(
@@ -65,9 +65,9 @@ def register(tree, database):
                 else:
                     lines.append(f"{stars} **{character}** (max level)")
 
-                # Show image of the highest rarity pull
+                image = await get_character_image_for_session(session, character)
                 if image and rarity > best_rarity:
-                    best_image  = image
+                    best_image = image
                     best_rarity = rarity
 
             pity_text = f"{new_p4}/{PITY_4STAR} to guaranteed ⭐⭐⭐⭐"

@@ -1,7 +1,7 @@
 import discord
 from sqlalchemy import select
 from database.models import GachaCard
-from commands.gacha._gacha_utils import STAR_EMOJIS, RARITY_COLORS
+from commands.gacha._gacha_utils import STAR_EMOJIS
 
 name        = "gacha-characters"
 description = "View your gacha character collection"

@@ -1,7 +1,7 @@
 import discord
 from sqlalchemy import select
 from database.models import GachaCard, GachaPity, User
-from commands.gacha._gacha_utils import pull_character, PULL_COST, STAR_EMOJIS, RARITY_COLORS, MAX_LEVEL, PITY_4STAR
+from commands.gacha._gacha_utils import pull_character, PULL_COST, STAR_EMOJIS, RARITY_COLORS, MAX_LEVEL, PITY_4STAR, get_character_image_for_session
 
 name        = "gacha-single"
 description = "Pull 1 gacha character (120 Jennies)"
@@ -33,7 +33,7 @@ def register(tree, database):
                 session.add(pity)
                 await session.flush()
 
-            character, rarity, image = pull_character(pity.pulls_since_4star, pity.pulls_since_3star)
+            character, rarity, _ = pull_character(pity.pulls_since_4star, pity.pulls_since_3star)
             user.jennies -= PULL_COST
 
             if rarity == 4:
@@ -68,6 +68,7 @@ def register(tree, database):
                 is_new = False
 
             pity_text = f"{pity.pulls_since_4star}/{PITY_4STAR} to guaranteed ⭐⭐⭐⭐"
+            image = await get_character_image_for_session(session, character)
             await session.commit()
 
         stars  = STAR_EMOJIS[rarity]
