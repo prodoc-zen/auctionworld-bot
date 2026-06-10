@@ -303,6 +303,16 @@
       "groups": []
     }
   },
+  "reme": {
+    "file": "commands/gambling/reme.py",
+    "description": "Play REME Roulette",
+    "usage": "/reme bet:",
+    "access": {
+      "user_ids": [],
+      "role_ids": [],
+      "groups": []
+    }
+  },
   "gacha-single": {
     "file": "commands/gacha/gacha_single.py",
     "description": "Pull 1 gacha character",
